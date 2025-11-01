@@ -1,394 +1,170 @@
-# Honey Badger OS
+# 🦡 Honey Badger OS Post-Install Scripts
 
-> **🦡 Fearless Multi-Architecture Linux Distribution**
+**Transform any Linux distribution into a powerful Honey Badger development environment**
 
-Honey Badger OS is a custom Linux distribution with complete honey badger theming, multi-architecture support, and a focus on the nano text editor. Like its namesake, this OS is fearless, resilient, and gets the job done without giving up.
+## 🎯 Project Overview
 
-## 📚 Complete Documentation
+Honey Badger OS Post-Install Scripts provide a comprehensive post-installation solution that transforms fresh Linux installations into fully-configured development environments. Just like the honey badger itself - fearless, determined, and uncompromising.
 
-**For full details, see our comprehensive documentation:**
+### ✨ Features
 
-- **[📖 USER GUIDE](USER_GUIDE.md)** - Complete user documentation, installation, and usage
-- **[🚀 RELEASES](RELEASES.md)** - Version information, downloads, and release notes
-- **[🛠️ TROUBLESHOOTING](TROUBLESHOOTING.md)** - Issue resolution and diagnostic guide
-- **[🏗️ PROJECT OVERVIEW](PROJECT_OVERVIEW.md)** - Project goals, architecture, and roadmap  
-- **[⚙️ ARCHITECTURE SUMMARY](ARCHITECTURE_SUMMARY.md)** - Technical implementation details
-- **[💿 ISO Documentation](ISOs/README.md)** - Available ISO images and usage
+- **🎨 Custom Honey Badger Theme** - Distinctive earth-toned visual identity
+- **� nano as Default Editor** - Enhanced configuration with syntax highlighting  
+- **�️ Complete Developer Stack** - Programming languages, tools, and IDEs
+- **�️ XFCE Desktop Environment** - Full desktop with productivity applications
+- **📱 Multi-Distribution Support** - Works across major Linux distributions
+
+## � Supported Distributions
+
+| Distribution | Package Manager | Status | Script Location |
+|-------------|----------------|--------|-----------------|
+| **Arch Linux** | pacman | ✅ Ready | `distros/arch/` |
+| **Debian/Ubuntu** | apt | ✅ Ready | `distros/debian/` |
+| **Slackware** | slackpkg/sbopkg | ✅ Ready | `distros/slackware/` |
+| **Fedora/RHEL** | dnf/yum | ✅ Ready | `distros/fedora/` |
+| **Void Linux** | xbps | ✅ Ready | `distros/void/` |
 
 ## 🚀 Quick Start
 
-### Available ISOs
-
-**ARM64 (AArch64) - Production Ready:**
-
-- Pre-built ISOs (705MB Total):
-  - `honey-badger-os-basic-20251101.iso` (347MB) - Minimal functional system
-  - `honey-badger-os-themed-20251101.iso` (348MB) ⭐ **RECOMMENDED** - Full theming
-
-- **NEW: Full-Featured Build System** 🚀
-  - Complete development environment
-  - Hardware-optimized for ARM64 systems
-  - Kernel panic prevention and stability enhancements
-  - Build your own: See [BUILD_AARCH64.md](BUILD_AARCH64.md)
-
-**x86_64 - Cross-Compilation Demo:**
-
-- `honey-badger-os-x86_64-demo-20251101.iso` (11MB) - Architecture demonstration
-
-### Boot with QEMU
+### Automatic Detection & Installation
 
 ```bash
-# ARM64 Themed (Recommended)
-qemu-system-aarch64 -M virt -m 4G -cpu cortex-a57 \
-  -device virtio-gpu-pci -device qemu-xhid \
-  -cdrom ISOs/aarch64/honey-badger-os-themed-20251101.iso
-
-# x86_64 Demo
-qemu-system-x86_64 -m 2G \
-  -cdrom ISOs/x86_64/honey-badger-os-x86_64-demo-20251101.iso
+# Download and run the universal installer
+curl -fsSL https://raw.githubusercontent.com/James-HoneyBadger/Honey_Badger_OS/main/install.sh | bash
 ```
 
-## ✨ Key Features
+### Manual Installation
 
-### 🚀 **Production-Ready ARM64 Build System** (New!)
+```bash
+# Clone the repository
+git clone https://github.com/James-HoneyBadger/Honey_Badger_OS.git
+cd Honey_Badger_OS
 
-- **Full Development Environment**: Python, Node.js, Java, C/C++, Rust, Go
-- **Complete Desktop**: XFCE4 with LibreOffice, Firefox, GIMP, and more
-- **Hardware Optimized**: Comprehensive ARM64 driver support
-- **Stability Enhanced**: Kernel parameters tuned to prevent panics
-- **Easy Installation**: Calamares graphical installer included
-- **Docker Support**: Build on any platform with Docker
+# Run the installer
+./install.sh
+```
 
-### 🦡 **Complete Honey Badger Theming**
+### Distribution-Specific Installation
 
-- 6 icon sizes (16px-256px) with honey badger branding
-- 3 wallpaper resolutions optimized for different displays  
-- Custom nano editor colors (brown/yellow theme)
-- Boot banners, MOTD, and complete visual identity
+```bash
+# For Arch Linux
+./distros/arch/install-arch.sh
 
-### 🏗️ **Multi-Architecture Support**
+# For Debian/Ubuntu  
+./distros/debian/install-debian.sh
 
-- **ARM64**: Native compilation with full production features
-- **x86_64**: Cross-compilation with QEMU emulation
-- **Extensible**: Framework ready for RISC-V, PowerPC, etc.
+# For Slackware
+./distros/slackware/install-slackware.sh
 
-### 📝 **Nano Editor Focus**
+# For Fedora/RHEL
+./distros/fedora/install-fedora.sh
 
-- Enhanced nano editor as the system default
-- Custom color scheme matching honey badger theme
-- Optimized configuration for development work
-- Syntax highlighting and modern features
+# For Void Linux
+./distros/void/install-void.sh
+```
 
-### 🔧 **Professional Build System**
+## 🎨 What You Get
 
-- **Build Tools**: Make, CMake, Autotools, Ninja, Meson
-- **Debugging**: GDB, Valgrind, Strace
+### Honey Badger Visual Theme
 
-### 📦 **Installation**
+- **Custom GTK Theme** with earth-toned colors (browns, golds, dark backgrounds)
+- **hb.jpg Integration** as system icon throughout the desktop
+- **Coordinated Desktop** with matching wallpapers, panel, and window decorations
+- **Terminal Theming** with custom color schemes
 
-- **Calamares installer** with custom branding
-- Graphical installation with partitioning support
-- Live system for testing before installation
-- Custom user setup and system configuration
+### Enhanced nano Editor
 
-### 🎨 **Applications**
+- **Syntax Highlighting** for 20+ programming languages
+- **Custom Key Bindings** (Ctrl+S save, Ctrl+Q quit, etc.)
+- **Line Numbers** and mouse support enabled
+- **Auto-indentation** and smart tabbing
+- **Dark Theme** matching Honey Badger colors
 
-- **Web Browsers**: Firefox ESR, Chromium
-- **Office Suite**: LibreOffice with GTK3 integration
-- **Multimedia**: VLC, Audacity, GIMP, Inkscape, Blender
-- **System Tools**: GParted, Synaptic, System Monitor
-- **Communication**: Thunderbird, Pidgin, HexChat
+### Complete Development Environment
 
-## System Requirements
+- **Programming Languages**: Python, Node.js, Go, Rust, C/C++, Java, Ruby, PHP
+- **Development Tools**: Git, Docker, Kubernetes, VS Code, databases
+- **Code Editors**: nano (default), Neovim, Vim, VS Code
+- **Container Tools**: Docker, Podman, Docker Compose
+- **Cloud Tools**: Terraform, Ansible, kubectl
 
-### Minimum Requirements
+### XFCE Desktop Environment
 
-- **Processor**: ARM64/AArch64 compatible CPU
-- **Memory**: 2 GB RAM (4 GB recommended)
-- **Storage**: 8 GB available space (16 GB recommended)
+- **Complete Desktop**: Full XFCE4 with all components
+- **Productivity Apps**: LibreOffice, Firefox, Thunderbird, GIMP
+- **Developer Tools**: Terminals, file managers, system monitors
+- **Panel Plugins**: Weather, system tray, volume control, workspace switcher
 - **Graphics**: Any ARM64 compatible GPU with basic 2D acceleration
 
-### Recommended Specifications
-
-- **Processor**: Modern ARM64 CPU (Cortex-A75 or newer)
-- **Memory**: 8 GB RAM or more
-- **Storage**: 32 GB SSD or faster storage
-- **Graphics**: GPU with OpenGL 2.0+ support
-- **Network**: Ethernet or Wi-Fi capability
-
-## Quick Start
-
-### 1. Download and Verify
-
-```bash
-# Download the latest ISO (replace with actual URL when available)
-wget https://releases.honeybadger-os.org/honey-badger-os-1.0-arm64.iso
-
-# Verify checksum
-sha256sum honey-badger-os-1.0-arm64.iso
-```
-
-### 2. Create Installation Media
-
-```bash
-# For ARM64 devices with SD card support
-dd if=honey-badger-os-1.0-arm64.iso of=/dev/sdX bs=4M status=progress
-sync
-```
-
-### 3. Boot and Install
-
-1. Insert installation media and boot from it
-2. Select "Install Honey Badger OS" from the boot menu
-3. Follow the Calamares installer steps
-4. Reboot and enjoy your new system!
-
-## Building from Source
-
-### Prerequisites
-
-- Debian/Ubuntu-based build system
-- At least 10 GB free disk space
-- 4 GB RAM minimum (8 GB recommended)
-- Root access for the build process
-
-### Build Process
-
-#### 1. Clone and Setup
-
-```bash
-git clone https://github.com/honeybadger-os/honeybadger-os.git
-cd honeybadger-os
-./scripts/setup.sh
-```
-
-#### 2. Customize (Optional)
-
-```bash
-# Edit main configuration
-nano config/honey-badger-os.conf
-
-# Customize package selection
-nano packages/developer-packages.list
-nano packages/applications.list
-
-# Modify theme
-nano theme/honey-badger-theme.css
-```
-
-#### 3. Build ISO
-
-```bash
-# Build the distribution (requires root)
-sudo ./scripts/build-iso.sh
-```
-
-The build process will:
-
-1. Install build dependencies
-2. Create the live-build environment
-3. Configure APT sources for ARM64
-4. Install all specified packages
-5. Apply custom configurations and themes
-6. Generate the bootable ISO image
-
-#### 4. Output
-
-The completed ISO will be located at:
+## 📁 Project Structure
 
 ```
-build/iso/honey-badger-os-1.0-arm64.iso
+Honey_Badger_OS/
+├── assets/                    # Shared assets (icons, wallpapers, themes)
+│   ├── hb.jpg                # Main Honey Badger icon
+│   ├── wallpapers/           # Desktop wallpapers
+│   └── icons/                # System icons in various sizes
+├── config/                   # Shared configuration files  
+│   ├── nanorc                # Enhanced nano configuration
+│   ├── gtk-theme.css         # GTK theme CSS
+│   └── xfce4/                # XFCE desktop configuration
+├── scripts/                  # Utility scripts
+│   ├── detect-distro.sh      # Distribution detection
+│   ├── install-theme.sh      # Theme installation
+│   └── setup-nano.sh         # nano configuration
+├── distros/                  # Distribution-specific installers
+│   ├── arch/                 # Arch Linux
+│   │   ├── install-arch.sh   # Main installer script
+│   │   ├── packages.txt      # Package list
+│   │   └── config/           # Arch-specific configurations
+│   ├── debian/               # Debian/Ubuntu
+│   │   ├── install-debian.sh # Main installer script  
+│   │   ├── packages.txt      # Package list
+│   │   └── config/           # Debian-specific configurations
+│   ├── slackware/            # Slackware
+│   │   ├── install-slackware.sh
+│   │   ├── packages.txt
+│   │   └── config/
+│   ├── fedora/               # Fedora/RHEL
+│   │   ├── install-fedora.sh
+│   │   ├── packages.txt  
+│   │   └── config/
+│   └── void/                 # Void Linux
+│       ├── install-void.sh
+│       ├── packages.txt
+│       └── config/
+├── install.sh                # Universal installer script
+├── README.md                 # This file
+└── docs/                     # Documentation
+    ├── INSTALLATION.md       # Detailed installation guide
+    ├── CUSTOMIZATION.md      # Customization options
+    └── TROUBLESHOOTING.md    # Common issues and solutions
 ```
 
-## Configuration
+## 🛠️ Installation Types
 
-### Package Management
+### Full Installation (Recommended)
 
-Honey Badger OS uses APT as the primary package manager with these sources configured:
+- Complete XFCE desktop environment
+- All development tools and languages
+- Full application suite (LibreOffice, GIMP, etc.)
+- Multimedia support and tools
+- **Size**: ~3-5GB depending on distribution
 
-```bash
-# Main Debian repositories
-deb http://deb.debian.org/debian bookworm main contrib non-free
-deb http://security.debian.org/debian-security bookworm-security main contrib non-free
-deb http://deb.debian.org/debian bookworm-updates main contrib non-free
-```
+### Developer Focus
 
-### Default User
+- Programming languages and development tools
+- Code editors and IDEs  
+- Version control and container tools
+- Minimal desktop (basic XFCE)
+- **Size**: ~2-3GB depending on distribution
 
-- **Username**: Created during installation via Calamares
-- **Groups**: users, sudo, audio, video, netdev, plugdev
-- **Shell**: Bash with completion
-- **Desktop**: XFCE4 with Honey Badger theme
-- **Default Editor**: Nano (configured system-wide)
+### Minimal Installation
 
-### Network Configuration
+- Essential system tools only
+- Enhanced nano configuration
+- Basic development utilities  
+- Command-line only (no desktop)
+- **Size**: ~500MB-1GB depending on distribution
 
-- **Network Manager**: For Wi-Fi and Ethernet
-- **SSH**: OpenSSH server (disabled by default)
-- **Firewall**: UFW (uncomplicated firewall)
-
-## Customization
-
-### Adding Packages
-
-Edit the package lists in the `packages/` directory:
-
-- `base-packages.list` - Essential system packages
-- `xfce-packages.list` - Desktop environment
-- `developer-packages.list` - Development tools
-- `applications.list` - User applications
-
-### Theming
-
-The custom Honey Badger theme can be modified:
-
-- **GTK Theme**: `theme/honey-badger-theme.css`
-- **Color Scheme**: Dark background (#2B2B2B) with honey gold accents (#FFB000)
-- **Icons**: Compatible with most icon themes
-
-### Default Editor
-
-Nano is configured as the system-wide default editor:
-
-- **Environment Variables**: `EDITOR`, `VISUAL`, `GIT_EDITOR` all set to nano
-- **System Alternatives**: Nano is set as the default through update-alternatives
-- **Configuration**: User-friendly nano settings with syntax highlighting, line numbers, and mouse support
-- **Location**: Global config in `/etc/nanorc`, user config in `~/.nanorc`
-
-### Calamares Installer
-
-Installer configuration is in the `calamares/` directory:
-
-- `settings.conf` - Main installer configuration
-- `branding.desc` - Custom branding and appearance
-- `users.conf` - User creation settings
-
-## Troubleshooting
-
-### Build Issues
-
-#### Cross-compilation Problems
-
-If building on x86_64 for ARM64:
-
-```bash
-# Install cross-compilation tools
-sudo apt install gcc-aarch64-linux-gnu qemu-user-static
-sudo update-binfmts --enable qemu-aarch64
-```
-
-#### Insufficient Space
-
-```bash
-# Check available space
-df -h
-# Clean build directory if needed
-sudo ./scripts/clean-build.sh
-```
-
-#### Package Installation Failures
-
-```bash
-# Update package lists
-sudo apt update
-# Check for broken packages
-sudo apt --fix-broken install
-```
-
-### Runtime Issues
-
-#### Graphics Problems
-
-- Ensure ARM64 graphics drivers are installed
-- Check X.org log: `sudo journalctl -u display-manager`
-
-#### Wi-Fi Not Working
-
-- Install additional firmware: `sudo apt install firmware-misc-nonfree`
-- Check network interfaces: `ip link show`
-
-#### Application Crashes
-
-- Check system logs: `sudo journalctl -f`
-- Verify architecture compatibility: `file /path/to/application`
-
-## Development
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test the build process
-5. Submit a pull request
-
-### Project Structure
-
-```
-honey-badger-os/
-├── build/              # Build output directory
-├── calamares/          # Installer configuration
-├── config/             # System configuration
-├── packages/           # Package lists
-├── scripts/            # Build scripts
-├── theme/              # Custom theme files
-├── live-build/         # Live-build working directory
-└── README.md          # This file
-```
-
-### Adding New Features
-
-1. Update package lists if new software is needed
-2. Add configuration files to `config/`
-3. Update build scripts if necessary
-4. Test thoroughly on target hardware
-5. Update documentation
-
-## Support
-
-### Documentation
-
-- **User Guide**: Available in `/usr/share/doc/honeybadger-os/`
-- **Man Pages**: Standard Linux documentation via `man`
-- **Online Wiki**: <https://wiki.honeybadger-os.org>
-
-### Community
-
-- **Forum**: <https://forum.honeybadger-os.org>
-- **IRC**: #honeybadger-os on Libera.Chat
-- **Matrix**: #honeybadger-os:matrix.org
-
-### Bug Reports
-
-Report issues at: <https://github.com/honeybadger-os/honeybadger-os/issues>
-
-Please include:
-
-- Hardware information (`lscpu`, `lsusb`, `lspci`)
-- System logs (`journalctl -b`)
-- Steps to reproduce the issue
-- Expected vs actual behavior
-
-## License
-
-Honey Badger OS is distributed under the GNU General Public License v3.0.
-See the `LICENSE` file for details.
-
-Individual packages included in the distribution retain their original licenses.
-
-## Credits
-
-### Built On
-
-- **Debian GNU/Linux** - Base system and packages
-- **XFCE Desktop Environment** - Desktop interface
-- **Calamares** - System installer
-- **Live-Build** - ISO creation toolkit
-
-### Inspired By
-
-The fearless honey badger (Mellivora capensis), known for its tenacious and fearless nature.
-
----
-
-**Honey Badger OS** - *Because your development environment should be as fearless as you are.*
+### Desktop Focus
