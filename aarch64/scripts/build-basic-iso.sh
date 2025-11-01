@@ -57,10 +57,13 @@ setup_dirs() {
 create_basic_base() {
     log "Creating ultra-minimal ARM64 base system..."
     
-    # Ultra-minimal package set - just the essentials
+    # Essential packages for live boot system
     BASIC_PACKAGES="systemd,nano,bash,coreutils,util-linux,mount,procps"
     BASIC_PACKAGES="$BASIC_PACKAGES,openssh-server,wget,sudo"
     BASIC_PACKAGES="$BASIC_PACKAGES,linux-image-arm64,grub-efi-arm64"
+    # CRITICAL: Live boot packages to prevent kernel panic
+    BASIC_PACKAGES="$BASIC_PACKAGES,live-boot,live-config,squashfs-tools"
+    BASIC_PACKAGES="$BASIC_PACKAGES,initramfs-tools,busybox-initramfs"
     
     # Use minbase variant for absolute minimum
     debootstrap --arch=arm64 \
@@ -144,9 +147,24 @@ sysfs   /sys    sysfs   defaults    0   0
 tmpfs   /tmp    tmpfs   defaults    0   0
 EOF
 
-    # Enable basic services (skip systemctl calls that might fail in chroot)
-    # chroot "$CHROOT_DIR" systemctl enable systemd-networkd
-    # chroot "$CHROOT_DIR" systemctl enable openssh
+    # Configure chroot environment for proper operation
+    mount -t proc proc "$CHROOT_DIR/proc" || true
+    mount -t sysfs sysfs "$CHROOT_DIR/sys" || true
+    mount -t devtmpfs dev "$CHROOT_DIR/dev" || true
+    
+    # Update initramfs with live-boot support - CRITICAL for preventing kernel panic
+    chroot "$CHROOT_DIR" /bin/bash -c "
+        export DEBIAN_FRONTEND=noninteractive
+        # Update initramfs to include live-boot components
+        update-initramfs -u -k all
+        # Ensure live-boot services are enabled
+        systemctl enable live-config || true
+    " || warn "Chroot configuration had issues but continuing..."
+    
+    # Cleanup mounts
+    umount "$CHROOT_DIR/proc" 2>/dev/null || true
+    umount "$CHROOT_DIR/sys" 2>/dev/null || true  
+    umount "$CHROOT_DIR/dev" 2>/dev/null || true
 }
 
 # Create simple filesystem
@@ -178,17 +196,17 @@ set default=0
 
 # Honey Badger OS Boot Menu
 menuentry '🦡 Honey Badger OS - Live System' {
-    linux /live/vmlinuz boot=live quiet splash
+    linux /live/vmlinuz boot=live components quiet splash toram=filesystem.squashfs
     initrd /live/initrd.img
 }
 
 menuentry '🦡 Honey Badger OS - Debug Mode' {
-    linux /live/vmlinuz boot=live debug
+    linux /live/vmlinuz boot=live components debug nosplash toram=filesystem.squashfs
     initrd /live/initrd.img
 }
 
 menuentry '🦡 Honey Badger OS - Safe Mode' {
-    linux /live/vmlinuz boot=live single
+    linux /live/vmlinuz boot=live components single nosplash noapic nolapic
     initrd /live/initrd.img
 }
 EOF
