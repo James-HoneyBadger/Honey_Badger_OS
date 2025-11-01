@@ -17,9 +17,31 @@ warning: xdg-desktop-portal-kde will be installed before its plasma-workspace de
 
 **Resolution**: These are generally safe to ignore as they're handled automatically by pacman's dependency resolver.
 
-### 2. Missing Firmware Warnings
+### 2. Self-Referential Dependency Warnings
 
+```bash
+error: self-referential dependencies not allowed
 ```
+
+**Root Cause**: Installing `yay-git` creates a conflict with `yay` since yay-git provides `yay` but also conflicts with it.
+
+**Resolution**: Remove yay-git and install stable yay:
+
+```bash
+# Remove problematic yay-git
+yay -R yay-git --noconfirm
+
+# Install stable yay from AUR
+git clone https://aur.archlinux.org/yay.git /tmp/yay
+cd /tmp/yay && makepkg -si --noconfirm
+
+# Verify fix
+yay --version  # Should show stable version without conflicts
+```
+
+### 3. Missing Firmware Warnings
+
+```bash
 WARNING: Possibly missing firmware for module: 'nouveau', 'panthor', 'ast', 'rockchipdrm', 'radeon', 'amdgpu', etc.
 ```
 
@@ -30,7 +52,7 @@ sudo pacman -S linux-firmware linux-firmware-whence
 yay -S linux-firmware-git  # For latest firmware updates
 ```
 
-### 3. AUR Package Conflicts
+### 4. AUR Package Conflicts
 
 **Common Issues with Honey Badger OS Development:**
 
