@@ -1,0 +1,60 @@
+# Honey Badger OS - XFCE4 Theme Configuration
+# Custom theme settings for the Honey Badger desktop environment
+
+# Theme Colors (Honey Badger color palette)
+# Primary: Dark brown/black (#1a1a1a)
+# Secondary: Golden yellow (#ffa500) 
+# Accent: Honey gold (#ffb347)
+# Text: White/light gray (#ffffff, #f0f0f0)
+# Background: Very dark gray (#0d0d0d)
+
+[Theme]
+Name=HoneyBadger
+Comment=Custom Honey Badger OS theme with earth tones
+Inherits=Adwaita
+
+[Colors:Window]
+BackgroundNormal=#1a1a1a
+BackgroundAlternate=#2a2a2a
+ForegroundNormal=#ffffff
+ForegroundInactive=#888888
+ForegroundActive=#ffa500
+ForegroundLink=#ffb347
+ForegroundVisited=#cc8400
+ForegroundNegative=#ff4444
+ForegroundNeutral=#ffaa00
+ForegroundPositive=#44ff44
+
+[Colors:Selection]
+BackgroundNormal=#ffa500
+BackgroundAlternate=#ffb347
+ForegroundNormal=#1a1a1a
+ForegroundInactive=#444444
+ForegroundActive=#000000
+
+[Colors:Button]
+BackgroundNormal=#333333
+BackgroundAlternate=#444444
+ForegroundNormal=#ffffff
+ForegroundInactive=#888888
+ForegroundActive=#ffa500
+
+[Colors:View]
+BackgroundNormal=#0d0d0d
+BackgroundAlternate=#1a1a1a
+ForegroundNormal=#f0f0f0
+ForegroundInactive=#666666
+ForegroundActive=#ffa500
+ForegroundLink=#ffb347
+ForegroundVisited=#cc8400
+
+[Colors:Tooltip]
+BackgroundNormal=#333333
+ForegroundNormal=#ffffff
+
+[Colors:Complementary]
+BackgroundNormal=#2a2a2a
+BackgroundAlternate=#333333
+ForegroundNormal=#ffffff
+ForegroundInactive=#888888
+ForegroundActive=#ffa500
