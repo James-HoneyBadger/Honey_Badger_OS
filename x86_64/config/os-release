@@ -1,0 +1,13 @@
+PRETTY_NAME="Honey Badger OS 1.0 (Fearless)"
+NAME="Honey Badger OS"
+VERSION_ID="1.0"
+VERSION="1.0 (Fearless)"
+VERSION_CODENAME=fearless
+ID=honey_badger_os
+ID_LIKE=debian
+HOME_URL="https://honeybadgeros.local/"
+SUPPORT_URL="https://honeybadgeros.local/support/"
+BUG_REPORT_URL="https://honeybadgeros.local/bugs/"
+PRIVACY_POLICY_URL="https://honeybadgeros.local/privacy/"
+LOGO="honey-badger-os"
+ANSI_COLOR="0;33"

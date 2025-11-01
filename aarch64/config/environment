@@ -1,0 +1,15 @@
+# Honey Badger OS Environment Configuration
+# Sets default applications and environment variables
+
+# Default text editor
+export EDITOR="nano"
+export VISUAL="nano"
+
+# Configure nano as git's default editor
+export GIT_EDITOR="nano"
+
+# Set nano as the default for various applications
+export ALTERNATE_EDITOR="nano"
+
+# Make nano more user-friendly
+export NANO_OPTS="--autoindent --constantshow --linenumbers --softwrap"

@@ -1,0 +1,40 @@
+# Build directories and output files
+build/
+output/
+*.iso
+*.img
+
+# Live-build working directory
+live-build/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Log files
+*.log
+
+# Compressed archives
+*.tar.gz
+*.tar.xz
+*.tar.bz2
+*.zip
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Large binary assets (keep smaller ones)
+*.bin
+*.raw
+
+# Backup files
+*.bak
+*.backup

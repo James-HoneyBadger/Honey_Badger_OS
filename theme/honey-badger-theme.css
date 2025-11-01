@@ -1,0 +1,108 @@
+/*
+ * Honey Badger OS Custom CSS Theme
+ * Dark theme with honey gold accents
+ */
+
+/* Color scheme */
+@define-color honey_gold #FFB000;
+@define-color dark_bg #2B2B2B;
+@define-color darker_bg #1E1E1E;
+@define-color light_text #FFFFFF;
+@define-color medium_text #CCCCCC;
+@define-color border_color #444444;
+
+/* Base theme */
+* {
+    outline-offset: -3px;
+    -GtkWidget-focus-line-width: 2;
+    -GtkWidget-focus-padding: 0;
+}
+
+window {
+    background-color: @dark_bg;
+    color: @light_text;
+}
+
+/* Buttons */
+button {
+    background: linear-gradient(to bottom, #3A3A3A, #2B2B2B);
+    border: 1px solid @border_color;
+    border-radius: 3px;
+    color: @light_text;
+    padding: 8px 16px;
+}
+
+button:hover {
+    background: linear-gradient(to bottom, #4A4A4A, #3B3B3B);
+    border-color: @honey_gold;
+}
+
+button:active {
+    background: linear-gradient(to bottom, #2B2B2B, #3A3A3A);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Primary buttons */
+button.suggested-action {
+    background: linear-gradient(to bottom, @honey_gold, #E09000);
+    color: #000000;
+    font-weight: bold;
+}
+
+button.suggested-action:hover {
+    background: linear-gradient(to bottom, #FFC020, @honey_gold);
+}
+
+/* Entries */
+entry {
+    background-color: @darker_bg;
+    border: 1px solid @border_color;
+    border-radius: 3px;
+    color: @light_text;
+    padding: 8px;
+}
+
+entry:focus {
+    border-color: @honey_gold;
+    box-shadow: 0 0 5px rgba(255, 176, 0, 0.3);
+}
+
+/* Menus */
+menu {
+    background-color: @dark_bg;
+    border: 1px solid @border_color;
+    color: @light_text;
+}
+
+menuitem {
+    padding: 8px 12px;
+}
+
+menuitem:hover {
+    background-color: @honey_gold;
+    color: #000000;
+}
+
+/* Toolbars */
+toolbar {
+    background: linear-gradient(to bottom, #3A3A3A, #2B2B2B);
+    border-bottom: 1px solid @border_color;
+    padding: 4px;
+}
+
+/* Scrollbars */
+scrollbar {
+    background-color: @dark_bg;
+    width: 12px;
+}
+
+scrollbar slider {
+    background-color: @border_color;
+    border-radius: 6px;
+    min-height: 20px;
+    min-width: 20px;
+}
+
+scrollbar slider:hover {
+    background-color: @honey_gold;
+}

@@ -1,0 +1,55 @@
+# Base system packages for Honey Badger OS
+# Essential system components
+
+# Kernel and bootloader
+linux-image-arm64
+linux-headers-arm64
+firmware-linux
+grub-efi-arm64
+efibootmgr
+
+# Base system
+systemd
+systemd-sysv
+dbus
+network-manager
+network-manager-gnome
+wireless-tools
+wpasupplicant
+bluez
+bluetooth
+
+# Hardware support
+alsa-utils
+pulseaudio
+pulseaudio-utils
+pavucontrol
+
+# File system support
+btrfs-progs
+xfsprogs
+ntfs-3g
+exfat-fuse
+dosfstools
+
+# Basic utilities
+sudo
+wget
+curl
+rsync
+unzip
+zip
+p7zip-full
+git
+htop
+tree
+nano
+vim
+openssh-client
+openssh-server
+
+# Firmware and drivers
+firmware-misc-nonfree
+firmware-iwlwifi
+firmware-realtek
+firmware-atheros

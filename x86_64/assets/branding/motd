@@ -1,0 +1,25 @@
+🦡 Welcome to Honey Badger OS - The Fearless Linux Distribution! 🦡
+
+  ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+  █                                              █
+  █    🦡 HONEY BADGER OS - FEARLESS EDITION 🦡    █  
+  █                                              █
+  █     "Honey badgers don't care about bugs,    █
+  █      they just code through them!"           █
+  █                                              █
+  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+
+🔧 System Features:
+   • ARM64 Architecture Ready
+   • Nano Editor Pre-configured
+   • Minimal & Fast
+   • Debian-Based Stability
+   
+⌨️  Quick Start:
+   • Text Editing: nano filename
+   • File Management: ls, cd, cp, mv
+   • Network: ip addr show
+   • Package Manager: apt update && apt install package
+   
+🦡 Remember: Be fearless like the honey badger!
+   This system is designed for developers who don't back down.
