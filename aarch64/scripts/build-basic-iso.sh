@@ -57,13 +57,12 @@ setup_dirs() {
 create_basic_base() {
     log "Creating ultra-minimal ARM64 base system..."
     
-    # Essential packages for live boot system
+    # Essential packages including live-boot system
     BASIC_PACKAGES="systemd,nano,bash,coreutils,util-linux,mount,procps"
-    BASIC_PACKAGES="$BASIC_PACKAGES,openssh-server,wget,sudo"
+    BASIC_PACKAGES="$BASIC_PACKAGES,openssh-server,wget,sudo,network-manager"
     BASIC_PACKAGES="$BASIC_PACKAGES,linux-image-arm64,grub-efi-arm64"
-    # CRITICAL: Live boot packages to prevent kernel panic
-    BASIC_PACKAGES="$BASIC_PACKAGES,live-boot,live-config,squashfs-tools"
-    BASIC_PACKAGES="$BASIC_PACKAGES,initramfs-tools,busybox-initramfs"
+    BASIC_PACKAGES="$BASIC_PACKAGES,live-boot,live-config,initramfs-tools"
+    BASIC_PACKAGES="$BASIC_PACKAGES,squashfs-tools,casper"
     
     # Use minbase variant for absolute minimum
     debootstrap --arch=arm64 \
@@ -147,24 +146,36 @@ sysfs   /sys    sysfs   defaults    0   0
 tmpfs   /tmp    tmpfs   defaults    0   0
 EOF
 
-    # Configure chroot environment for proper operation
-    mount -t proc proc "$CHROOT_DIR/proc" || true
-    mount -t sysfs sysfs "$CHROOT_DIR/sys" || true
-    mount -t devtmpfs dev "$CHROOT_DIR/dev" || true
+    # Enable basic services (skip systemctl calls that might fail in chroot)
+    # chroot "$CHROOT_DIR" systemctl enable systemd-networkd
+    # chroot "$CHROOT_DIR" systemctl enable openssh
+}
+
+# Configure live system for proper boot
+configure_live_system() {
+    log "Configuring live system..."
     
-    # Update initramfs with live-boot support - CRITICAL for preventing kernel panic
-    chroot "$CHROOT_DIR" /bin/bash -c "
-        export DEBIAN_FRONTEND=noninteractive
-        # Update initramfs to include live-boot components
-        update-initramfs -u -k all
-        # Ensure live-boot services are enabled
-        systemctl enable live-config || true
-    " || warn "Chroot configuration had issues but continuing..."
+    # Create live user
+    chroot "$CHROOT_DIR" useradd -m -s /bin/bash -G sudo honeybadger || true
+    echo "honeybadger:live" | chroot "$CHROOT_DIR" chpasswd
     
-    # Cleanup mounts
-    umount "$CHROOT_DIR/proc" 2>/dev/null || true
-    umount "$CHROOT_DIR/sys" 2>/dev/null || true  
-    umount "$CHROOT_DIR/dev" 2>/dev/null || true
+    # Configure live-config
+    mkdir -p "$CHROOT_DIR/etc/live"
+    cat > "$CHROOT_DIR/etc/live/config.conf" << EOF
+LIVE_USERNAME="honeybadger"
+LIVE_USER_FULLNAME="Honey Badger User"
+LIVE_HOSTNAME="honey-badger-os"
+LIVE_USER_DEFAULT_GROUPS="audio,cdrom,dip,floppy,video,plugdev,netdev,sudo"
+EOF
+
+    # Create live-config hooks
+    mkdir -p "$CHROOT_DIR/lib/live/config"
+    
+    # Update initramfs to include live-boot
+    chroot "$CHROOT_DIR" update-initramfs -u -k all
+    
+    # Ensure proper permissions
+    chmod 755 "$CHROOT_DIR/usr/local/bin"/* 2>/dev/null || true
 }
 
 # Create simple filesystem
@@ -196,17 +207,17 @@ set default=0
 
 # Honey Badger OS Boot Menu
 menuentry '🦡 Honey Badger OS - Live System' {
-    linux /live/vmlinuz boot=live components quiet splash toram=filesystem.squashfs
+    linux /live/vmlinuz boot=live components quiet splash toram
     initrd /live/initrd.img
 }
 
 menuentry '🦡 Honey Badger OS - Debug Mode' {
-    linux /live/vmlinuz boot=live components debug nosplash toram=filesystem.squashfs
+    linux /live/vmlinuz boot=live components debug nosplash
     initrd /live/initrd.img
 }
 
 menuentry '🦡 Honey Badger OS - Safe Mode' {
-    linux /live/vmlinuz boot=live components single nosplash noapic nolapic
+    linux /live/vmlinuz boot=live components single nosplash nomodeset
     initrd /live/initrd.img
 }
 EOF
@@ -259,6 +270,7 @@ main() {
     
     create_basic_base
     configure_basic_system
+    configure_live_system
     create_filesystem
     create_bootloader
     create_iso

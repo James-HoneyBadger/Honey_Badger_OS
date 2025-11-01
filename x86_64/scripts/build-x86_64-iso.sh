@@ -75,8 +75,7 @@ create_minimal_rootfs() {
         apt-get install -y --no-install-recommends \
             systemd nano bash coreutils util-linux mount procps \
             openssh-server wget sudo linux-image-amd64 \
-            grub-pc-bin grub-efi-amd64 initramfs-tools \
-            live-boot live-config squashfs-tools busybox-initramfs && 
+            grub-pc-bin grub-efi-amd64 initramfs-tools && 
         cp -a /bin /boot /etc /lib /lib64 /opt /root /sbin /usr /var /mnt/target/ &&
         mkdir -p /mnt/target/dev /mnt/target/proc /mnt/target/sys /mnt/target/tmp &&
         chmod 1777 /mnt/target/tmp
@@ -168,17 +167,12 @@ set default=0
 
 # Honey Badger OS x86_64 Boot Menu
 menuentry '🦡 Honey Badger OS x86_64 - Live System' {
-    linux /live/vmlinuz boot=live components quiet splash toram=filesystem.squashfs
+    linux /live/vmlinuz boot=live quiet splash
     initrd /live/initrd.img
 }
 
 menuentry '🦡 Honey Badger OS x86_64 - Debug Mode' {
-    linux /live/vmlinuz boot=live components debug nosplash toram=filesystem.squashfs
-    initrd /live/initrd.img
-}
-
-menuentry '🦡 Honey Badger OS x86_64 - Safe Mode' {
-    linux /live/vmlinuz boot=live components single nosplash noapic nolapic
+    linux /live/vmlinuz boot=live debug
     initrd /live/initrd.img
 }
 EOF
