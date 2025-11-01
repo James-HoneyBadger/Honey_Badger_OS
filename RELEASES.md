@@ -77,11 +77,25 @@ A fearless Linux distribution that combines:
 - **Efficiency**: Gets the job done without complexity
 - **Uniqueness**: Distinctive branding and nano focus
 
-### 🚧 Known Issues
+### 🚧 Known Issues & Status
+
+**⚠️ CRITICAL: Current ISOs (November 1, 2025) have kernel panic issues**
+
+- The existing ISOs in the repository will kernel panic during boot
+- **FIX APPLIED**: Build scripts have been updated with live-boot packages and proper boot parameters
+- **ACTION REQUIRED**: Rebuild ISOs using the fixed scripts before use
+
+**Other Known Issues:**
 
 - Build system requires root privileges for ISO creation
-- Cross-compilation requires QEMU user emulation setup
+- Cross-compilation requires QEMU user emulation setup  
 - Some build artifacts require manual cleanup
+
+**To get working ISOs:**
+
+1. Use the updated build scripts (post kernel panic fix)
+2. See `KERNEL_PANIC_FIX.md` for detailed troubleshooting
+3. Test in QEMU before deployment
 
 ### 🔮 Next Release (v1.1.0)
 
