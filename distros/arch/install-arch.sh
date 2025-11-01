@@ -214,6 +214,13 @@ install_essential_packages() {
 install_aur_helper() {
     if command -v yay &> /dev/null; then
         print_success "yay AUR helper already installed"
+        # Test yay functionality
+        print_status "Testing yay functionality..."
+        if yay --version &> /dev/null; then
+            print_success "yay is working correctly"
+        else
+            print_warning "yay exists but may have issues"
+        fi
         return
     fi
     
@@ -261,7 +268,7 @@ install_development_tools() {
         
         # Editors and IDEs
         "neovim"
-        "code"  # VSCode from AUR via yay
+        "visual-studio-code-bin"  # VSCode from AUR via yay
         
         # Build tools
         "make"
@@ -316,7 +323,16 @@ install_development_tools() {
     # Install AUR packages
     if [[ ${#aur_packages[@]} -gt 0 ]]; then
         print_status "Installing development packages from AUR..."
-        yay -S --noconfirm "${aur_packages[@]}" || print_warning "Some AUR packages failed to install"
+        print_status "AUR packages to install: ${aur_packages[*]}"
+        
+        # Install packages individually to avoid dependency loops
+        for package in "${aur_packages[@]}"; do
+            print_status "Installing AUR package: $package"
+            if ! yay -S --noconfirm --needed "$package"; then
+                print_warning "Failed to install AUR package: $package"
+                print_warning "Continuing with remaining packages..."
+            fi
+        done
     fi
     
     print_success "Development tools installed"
@@ -396,7 +412,7 @@ install_productivity_apps() {
         
         # Communication
         "thunderbird"
-        "discord"
+        # "discord"  # Moved to optional AUR packages to avoid dependency issues
         
         # Multimedia
         "vlc"
@@ -407,7 +423,7 @@ install_productivity_apps() {
         
         # System tools
         "gparted"
-        "timeshift"
+        # "timeshift"  # Moved to optional AUR packages to avoid dependency issues
         "bleachbit"
         "sysbench"
         "stress"
@@ -441,7 +457,17 @@ install_productivity_apps() {
     
     # Install AUR packages
     if [[ ${#aur_packages[@]} -gt 0 ]]; then
-        yay -S --noconfirm "${aur_packages[@]}" || print_warning "Some AUR productivity packages failed to install"
+        print_status "Installing productivity packages from AUR..."
+        print_status "AUR packages to install: ${aur_packages[*]}"
+        
+        # Install packages individually to avoid dependency loops
+        for package in "${aur_packages[@]}"; do
+            print_status "Installing AUR package: $package"
+            if ! yay -S --noconfirm --needed "$package"; then
+                print_warning "Failed to install AUR package: $package"
+                print_warning "Continuing with remaining packages..."
+            fi
+        done
     fi
     
     print_success "Productivity applications installed"
