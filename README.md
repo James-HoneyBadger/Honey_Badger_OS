@@ -168,3 +168,105 @@ Honey_Badger_OS/
 - **Size**: ~500MB-1GB depending on distribution
 
 ### Desktop Focus
+
+- Complete XFCE desktop environment
+- Office and productivity applications
+- Media applications and utilities
+- Basic development tools
+- **Size**: ~2-3GB depending on distribution
+
+## 🔧 Customization
+
+### Theme Customization
+
+```bash
+# Edit GTK theme
+nano ~/.config/gtk-3.0/gtk.css
+
+# Modify XFCE settings
+xfce4-settings-manager
+
+# Change wallpaper
+cp your-wallpaper.jpg ~/.local/share/honey-badger/wallpapers/
+```
+
+### nano Configuration
+
+```bash
+# Edit user nano config
+nano ~/.nanorc
+
+# System-wide nano config (requires sudo)
+sudo nano /etc/nanorc
+```
+
+### Package Management
+
+```bash
+# Add additional software (examples for each distro)
+# Arch: sudo pacman -S package-name
+# Debian: sudo apt install package-name  
+# Slackware: sudo slackpkg install package-name
+# Fedora: sudo dnf install package-name
+# Void: sudo xbps-install package-name
+```
+
+## 📖 Documentation
+
+- **[Installation Guide](docs/INSTALLATION.md)** - Detailed installation instructions
+- **[Customization Guide](docs/CUSTOMIZATION.md)** - How to customize your setup
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Developer Guide](docs/DEVELOPER.md)** - Adding support for new distributions
+
+## 🤝 Contributing
+
+We welcome contributions! Here's how you can help:
+
+1. **Add New Distributions** - Create post-install scripts for additional Linux distributions
+2. **Improve Existing Scripts** - Enhance functionality and compatibility
+3. **Update Themes** - Improve visual design and branding
+4. **Documentation** - Help improve guides and documentation
+5. **Testing** - Test scripts on different systems and report issues
+
+### Adding a New Distribution
+
+1. Create directory: `distros/your-distro/`
+2. Create installer script: `install-your-distro.sh`
+3. Add package list: `packages.txt`
+4. Update distribution detection in `scripts/detect-distro.sh`
+5. Update documentation and README
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🦡 About Honey Badger OS
+
+Inspired by the fearless and determined honey badger, this project aims to create uncompromising, robust development environments that "just work" across different Linux distributions. No matter which Linux distribution you prefer, Honey Badger OS post-install scripts transform your system into a powerful, developer-focused environment.
+
+### Philosophy
+
+- **Fearless**: Comprehensive feature set that doesn't compromise on functionality
+- **Determined**: Robust installation process with error handling and recovery
+- **Uncompromising**: Professional quality with attention to every detail
+- **Versatile**: Works across multiple Linux distributions and use cases
+
+## 🔗 Links
+
+- **GitHub Repository**: [Honey_Badger_OS](https://github.com/James-HoneyBadger/Honey_Badger_OS)
+- **Issues & Support**: [GitHub Issues](https://github.com/James-HoneyBadger/Honey_Badger_OS/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/James-HoneyBadger/Honey_Badger_OS/discussions)
+
+---
+
+**Transform your Linux installation into a fearless development environment! 🦡**
+
+### Minimal Installation
+
+- Essential system tools only
+- Enhanced nano configuration
+- Basic development utilities  
+- Command-line only (no desktop)
+- **Size**: ~500MB-1GB depending on distribution
+
+### Desktop Focus
