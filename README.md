@@ -10,6 +10,7 @@ Honey Badger OS is a custom Linux distribution with complete honey badger themin
 
 - **[📖 USER GUIDE](USER_GUIDE.md)** - Complete user documentation, installation, and usage
 - **[🚀 RELEASES](RELEASES.md)** - Version information, downloads, and release notes
+- **[🛠️ TROUBLESHOOTING](TROUBLESHOOTING.md)** - Issue resolution and diagnostic guide
 - **[🏗️ PROJECT OVERVIEW](PROJECT_OVERVIEW.md)** - Project goals, architecture, and roadmap  
 - **[⚙️ ARCHITECTURE SUMMARY](ARCHITECTURE_SUMMARY.md)** - Technical implementation details
 - **[💿 ISO Documentation](ISOs/README.md)** - Available ISO images and usage
