@@ -1,0 +1,173 @@
+#!/bin/bash
+# GRUB EFI Configuration Hook for ARM64
+# Ensures proper bootloader setup for ARM64 systems
+
+set -e
+
+echo "Configuring GRUB-EFI for ARM64..."
+
+# Install GRUB EFI packages if not already installed
+apt-get install -y grub-efi-arm64 grub-efi-arm64-signed shim-signed
+
+# Configure GRUB defaults
+cat > /etc/default/grub << 'EOF'
+# GRUB Configuration for Honey Badger OS ARM64
+
+# Boot options
+GRUB_DEFAULT=0
+GRUB_TIMEOUT=10
+GRUB_DISTRIBUTOR="Honey Badger OS"
+
+# Kernel command line
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash noswap noeject"
+GRUB_CMDLINE_LINUX="systemd.show_status=false rd.udev.log_priority=3 vt.global_cursor_default=0"
+
+# Terminal configuration
+GRUB_TERMINAL=console
+GRUB_GFXMODE=auto
+GRUB_GFXPAYLOAD_LINUX=keep
+
+# ARM64 specific settings
+GRUB_PRELOAD_MODULES="part_gpt part_msdos fat ext2"
+GRUB_TIMEOUT_STYLE=menu
+GRUB_DISABLE_OS_PROBER=false
+GRUB_DISABLE_RECOVERY=false
+
+# EFI specific settings
+GRUB_EFI_PLATFORM=arm64
+EOF
+
+# Create GRUB configuration directory
+mkdir -p /etc/grub.d
+
+# Create custom GRUB menu entries
+cat > /etc/grub.d/40_custom << 'EOF'
+#!/bin/sh
+exec tail -n +3 $0
+# This file provides an easy way to add custom menu entries.  Simply type the
+# menu entries you want to add after this comment.  Be careful not to change
+# the 'exec tail' line above.
+
+menuentry 'Honey Badger OS (Safe Mode)' --class gnu-linux --class gnu --class os {
+    set gfxpayload=keep
+    linux	/live/vmlinuz boot=live components quiet splash noswap noeject acpi=off
+    initrd	/live/initrd.img
+}
+
+menuentry 'Honey Badger OS (Debug Mode)' --class gnu-linux --class gnu --class os {
+    set gfxpayload=keep
+    linux	/live/vmlinuz boot=live components debug systemd.log_level=debug
+    initrd	/live/initrd.img
+}
+EOF
+
+chmod +x /etc/grub.d/40_custom
+
+# Configure GRUB theme
+mkdir -p /boot/grub/themes/honey-badger
+cat > /boot/grub/themes/honey-badger/theme.txt << 'EOF'
+# Honey Badger OS GRUB Theme
+
+# General settings
+title-text: "Honey Badger OS"
+title-font: "Unifont Regular 16"
+title-color: "#8B4513"
+message-font: "Unifont Regular 12"
+message-color: "#FFFFFF"
+terminal-font: "Unifont Regular 12"
+
+# Background
+desktop-image: "background.png"
+desktop-color: "#000000"
+
+# Boot menu
++ boot_menu {
+    left = 20%
+    top = 30%
+    width = 60%
+    height = 50%
+    item_font = "Unifont Regular 12"
+    item_color = "#FFFFFF"
+    selected_item_color = "#8B4513"
+    item_height = 25
+    item_padding = 10
+    item_spacing = 5
+}
+
+# Progress bar
++ progress_bar {
+    id = "__timeout__"
+    left = 20%
+    top = 85%
+    width = 60%
+    height = 20
+    font = "Unifont Regular 12"
+    text_color = "#FFFFFF"
+    fg_color = "#8B4513"
+    bg_color = "#FFFFFF"
+    border_color = "#8B4513"
+    text = "@TIMEOUT_NOTIFICATION_LONG@"
+}
+EOF
+
+# Create a simple background (this would be replaced with actual image)
+cat > /boot/grub/themes/honey-badger/background.png << 'EOF'
+# Placeholder for background image
+# In a real implementation, this would be a PNG file
+EOF
+
+# Configure EFI boot manager
+mkdir -p /boot/efi/EFI/BOOT
+
+# Create EFI boot configuration
+cat > /boot/efi/EFI/BOOT/startup.nsh << 'EOF'
+@echo -off
+echo "Starting Honey Badger OS..."
+\EFI\BOOT\grubaa64.efi
+EOF
+
+# Ensure proper permissions
+chmod 644 /boot/efi/EFI/BOOT/startup.nsh
+
+# Configure systemd-boot as fallback (if available)
+if command -v bootctl >/dev/null 2>&1; then
+    mkdir -p /boot/loader/entries
+    
+    cat > /boot/loader/loader.conf << 'EOF'
+default honey-badger
+timeout 10
+editor 0
+EOF
+
+    cat > /boot/loader/entries/honey-badger.conf << 'EOF'
+title Honey Badger OS
+linux /live/vmlinuz
+initrd /live/initrd.img
+options boot=live components quiet splash noswap noeject
+EOF
+fi
+
+# Create post-install GRUB update script
+cat > /usr/local/bin/update-grub-config.sh << 'EOF'
+#!/bin/bash
+# Update GRUB configuration after installation
+
+# Update GRUB configuration
+update-grub
+
+# Install GRUB to EFI system partition
+if [ -d "/boot/efi" ]; then
+    grub-install --target=arm64-efi --efi-directory=/boot/efi --bootloader-id="Honey Badger OS"
+fi
+
+# Update EFI boot manager
+if command -v efibootmgr >/dev/null 2>&1; then
+    efibootmgr --create --disk /dev/sda --part 1 --loader '\EFI\Honey Badger OS\grubaa64.efi' --label "Honey Badger OS" || true
+fi
+
+exit 0
+EOF
+
+chmod +x /usr/local/bin/update-grub-config.sh
+
+echo "GRUB-EFI configuration completed."

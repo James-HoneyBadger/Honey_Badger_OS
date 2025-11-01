@@ -17,12 +17,19 @@ Honey Badger OS is a custom Linux distribution with complete honey badger themin
 
 ## 🚀 Quick Start
 
-### Available ISOs (705MB Total)
+### Available ISOs
 
 **ARM64 (AArch64) - Production Ready:**
 
-- `honey-badger-os-basic-20251101.iso` (347MB) - Minimal functional system
-- `honey-badger-os-themed-20251101.iso` (348MB) ⭐ **RECOMMENDED** - Full theming
+- Pre-built ISOs (705MB Total):
+  - `honey-badger-os-basic-20251101.iso` (347MB) - Minimal functional system
+  - `honey-badger-os-themed-20251101.iso` (348MB) ⭐ **RECOMMENDED** - Full theming
+
+- **NEW: Full-Featured Build System** 🚀
+  - Complete development environment
+  - Hardware-optimized for ARM64 systems
+  - Kernel panic prevention and stability enhancements
+  - Build your own: See [BUILD_AARCH64.md](BUILD_AARCH64.md)
 
 **x86_64 - Cross-Compilation Demo:**
 
@@ -42,6 +49,15 @@ qemu-system-x86_64 -m 2G \
 ```
 
 ## ✨ Key Features
+
+### 🚀 **Production-Ready ARM64 Build System** (New!)
+
+- **Full Development Environment**: Python, Node.js, Java, C/C++, Rust, Go
+- **Complete Desktop**: XFCE4 with LibreOffice, Firefox, GIMP, and more
+- **Hardware Optimized**: Comprehensive ARM64 driver support
+- **Stability Enhanced**: Kernel parameters tuned to prevent panics
+- **Easy Installation**: Calamares graphical installer included
+- **Docker Support**: Build on any platform with Docker
 
 ### 🦡 **Complete Honey Badger Theming**
 

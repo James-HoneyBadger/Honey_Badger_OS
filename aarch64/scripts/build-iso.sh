@@ -1,11 +1,26 @@
 #!/bin/bash
 # Honey Badger OS Build Script
-# Builds a custom ARM64 Linux distribution
+# Builds a custom ARM64 Linux distribution with enhanced stability and hardware support
 
-set -e
+set -euo pipefail
+
+# Get absolute path to config
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="$SCRIPT_DIR/../config/honey-badger-os.conf"
 
 # Source configuration
-source "$(dirname "$0")/../config/honey-badger-os.conf"
+if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo "ERROR: Configuration file not found: $CONFIG_FILE"
+    exit 1
+fi
+
+source "$CONFIG_FILE"
+
+# Override build directory to use absolute path
+BUILD_DIR="/tmp/honey-badger-build"
+LIVE_BUILD_DIR="$BUILD_DIR/live-build"
+CONFIG_DIR="$SCRIPT_DIR/../config"
+SCRIPTS_DIR="$SCRIPT_DIR"
 
 # Colors for output
 RED='\033[0;31m'
@@ -43,51 +58,82 @@ check_root() {
 install_dependencies() {
     log "Installing build dependencies..."
     
-    apt-get update
+    # Update package lists
+    apt-get update || error "Failed to update package lists"
+    
+    # Install essential build tools (ARM64 optimized)
     apt-get install -y \
         debootstrap \
         squashfs-tools \
         xorriso \
         isolinux \
         syslinux-efi \
-        grub-pc-bin \
-        grub-efi-amd64-bin \
+        grub-efi-arm64 \
         grub-efi-arm64-bin \
+        grub-efi-arm64-signed \
         mtools \
         dosfstools \
         live-build \
         calamares \
-        calamares-settings-ubuntu \
+        calamares-settings-debian \
         wget \
         curl \
-        rsync
+        rsync \
+        qemu-user-static \
+        binfmt-support \
+        fdisk \
+        parted \
+        util-linux \
+        systemd-container \
+        || error "Failed to install build dependencies"
+    
+    # Enable qemu-user-static for cross-compilation support
+    systemctl enable binfmt-support || warn "Failed to enable binfmt-support"
+    
+    log "Build dependencies installed successfully"
 }
 
 # Create build environment
 create_build_env() {
     log "Creating build environment..."
     
+    # Clean and create directories
+    rm -rf "$BUILD_DIR"
     mkdir -p "$BUILD_DIR"
     mkdir -p "$ISO_OUTPUT_DIR"
     mkdir -p "$LIVE_BUILD_DIR"
     
-    cd "$LIVE_BUILD_DIR"
+    cd "$LIVE_BUILD_DIR" || error "Failed to change to build directory"
     
-    # Initialize live-build
+    # Initialize live-build with enhanced configuration
     lb config \
         --architecture "$ARCH" \
         --distribution "$DEBIAN_RELEASE" \
-        --archive-areas "main contrib non-free" \
+        --archive-areas "main contrib non-free non-free-firmware" \
         --linux-flavours "generic" \
-        --bootappend-live "boot=live components quiet splash" \
+        --linux-packages "linux-image linux-headers" \
+        --bootappend-live "boot=live components quiet splash noswap noeject" \
         --bootloader "grub-efi" \
         --binary-images "iso-hybrid" \
         --mode "debian" \
         --system "live" \
-        --memtest "memtest86+" \
+        --memtest "none" \
         --iso-application "$DISTRO_NAME" \
         --iso-publisher "$DISTRO_NAME Team" \
-        --iso-volume "$DISTRO_NAME $DISTRO_VERSION"
+        --iso-volume "$DISTRO_NAME $DISTRO_VERSION" \
+        --debian-installer "false" \
+        --firmware-chroot "true" \
+        --firmware-binary "true" \
+        --updates "true" \
+        --security "true" \
+        --backports "false" \
+        --cache "false" \
+        --apt-recommends "false" \
+        --compression "xz" \
+        --zsync "false" \
+        || error "Failed to configure live-build"
+        
+    log "Build environment created successfully"
 }
 
 # Configure APT sources
@@ -112,20 +158,43 @@ EOF
 install_packages() {
     log "Configuring package installation..."
     
-    # Combine all package lists
-    cat "$CONFIG_DIR/../packages/base-packages.list" \
-        "$CONFIG_DIR/../packages/xfce-packages.list" \
-        "$CONFIG_DIR/../packages/developer-packages.list" \
-        "$CONFIG_DIR/../packages/applications.list" \
-        > "$LIVE_BUILD_DIR/config/package-lists/honey-badger.list.chroot"
+    # Create package lists directory
+    mkdir -p "$LIVE_BUILD_DIR/config/package-lists"
     
-    # Essential packages for live system
+    # Use essential packages only for space-constrained build
+    if [ "${BUILD_MINIMAL:-}" = "1" ]; then
+        grep -v '^#\|^$' "$CONFIG_DIR/../packages/essential-only.list" > "$LIVE_BUILD_DIR/config/package-lists/honey-badger.list.chroot"
+        log "Using minimal package set for space-constrained build"
+    else
+        # Combine all package lists, filtering out comments and empty lines
+        {
+            grep -v '^#\|^$' "$CONFIG_DIR/../packages/base-packages.list"
+            grep -v '^#\|^$' "$CONFIG_DIR/../packages/xfce-packages.list"  
+            grep -v '^#\|^$' "$CONFIG_DIR/../packages/developer-packages.list"
+            grep -v '^#\|^$' "$CONFIG_DIR/../packages/applications.list"
+        } | sort -u > "$LIVE_BUILD_DIR/config/package-lists/honey-badger.list.chroot"
+    fi
+    
+    # Essential packages for live system with ARM64 specifics
     cat > "$LIVE_BUILD_DIR/config/package-lists/live.list.chroot" << EOF
 live-boot
 live-config
 live-config-systemd
+systemd
+systemd-sysv
+udev
+dbus
+networkd-dispatcher
 calamares
-calamares-settings-ubuntu
+calamares-settings-debian
+openssh-server
+firmware-linux
+firmware-linux-free
+firmware-linux-nonfree
+firmware-misc-nonfree
+linux-firmware
+u-boot-tools
+device-tree-compiler
 EOF
 }
 
@@ -154,7 +223,29 @@ EOF
     
     # Copy theme files
     mkdir -p "$LIVE_BUILD_DIR/config/includes.chroot/usr/share/themes/HoneyBadger"
-    cp -r "$CONFIG_DIR/../theme/"* "$LIVE_BUILD_DIR/config/includes.chroot/usr/share/themes/HoneyBadger/"
+    if [ -d "$CONFIG_DIR/../theme" ]; then
+        cp -r "$CONFIG_DIR/../theme/"* "$LIVE_BUILD_DIR/config/includes.chroot/usr/share/themes/HoneyBadger/"
+    fi
+    
+    # Copy wallpapers and branding
+    mkdir -p "$LIVE_BUILD_DIR/config/includes.chroot/usr/share/backgrounds"
+    mkdir -p "$LIVE_BUILD_DIR/config/includes.chroot/usr/share/pixmaps"
+    
+    if [ -d "$CONFIG_DIR/../assets/wallpapers" ]; then
+        cp "$CONFIG_DIR/../assets/wallpapers/"* "$LIVE_BUILD_DIR/config/includes.chroot/usr/share/backgrounds/" 2>/dev/null || true
+    fi
+    
+    if [ -d "$CONFIG_DIR/../assets/icons" ]; then
+        cp "$CONFIG_DIR/../assets/icons/"* "$LIVE_BUILD_DIR/config/includes.chroot/usr/share/pixmaps/" 2>/dev/null || true
+    fi
+    
+    # Create default wallpaper if none exists
+    if [ ! -f "$LIVE_BUILD_DIR/config/includes.chroot/usr/share/backgrounds/honey-badger-wallpaper.jpg" ]; then
+        # Create a simple colored background as placeholder
+        mkdir -p "$LIVE_BUILD_DIR/config/includes.chroot/usr/share/backgrounds"
+        # This would be replaced with an actual image file in production
+        touch "$LIVE_BUILD_DIR/config/includes.chroot/usr/share/backgrounds/honey-badger-wallpaper.jpg"
+    fi
     
     # Configure nano as default editor
     mkdir -p "$LIVE_BUILD_DIR/config/includes.chroot/etc/environment.d"
@@ -170,8 +261,34 @@ EOF
     # Configure alternatives for editor
     mkdir -p "$LIVE_BUILD_DIR/config/includes.chroot/var/lib/dpkg/alternatives"
     
-    # Copy editor configuration script
+    # Copy all configuration hooks
     mkdir -p "$LIVE_BUILD_DIR/config/hooks/live"
+    
+    # Copy hardware support hook
+    if [ -f "$SCRIPTS_DIR/hooks/01-hardware-support.hook.chroot" ]; then
+        cp "$SCRIPTS_DIR/hooks/01-hardware-support.hook.chroot" "$LIVE_BUILD_DIR/config/hooks/live/"
+        chmod +x "$LIVE_BUILD_DIR/config/hooks/live/01-hardware-support.hook.chroot"
+    fi
+    
+    # Copy stability hook
+    if [ -f "$SCRIPTS_DIR/hooks/02-system-stability.hook.chroot" ]; then
+        cp "$SCRIPTS_DIR/hooks/02-system-stability.hook.chroot" "$LIVE_BUILD_DIR/config/hooks/live/"
+        chmod +x "$LIVE_BUILD_DIR/config/hooks/live/02-system-stability.hook.chroot"
+    fi
+    
+    # Copy live config hook
+    if [ -f "$SCRIPTS_DIR/hooks/03-live-config.hook.chroot" ]; then
+        cp "$SCRIPTS_DIR/hooks/03-live-config.hook.chroot" "$LIVE_BUILD_DIR/config/hooks/live/"
+        chmod +x "$LIVE_BUILD_DIR/config/hooks/live/03-live-config.hook.chroot"
+    fi
+    
+    # Copy bootloader config hook
+    if [ -f "$SCRIPTS_DIR/hooks/04-bootloader-config.hook.chroot" ]; then
+        cp "$SCRIPTS_DIR/hooks/04-bootloader-config.hook.chroot" "$LIVE_BUILD_DIR/config/hooks/live/"
+        chmod +x "$LIVE_BUILD_DIR/config/hooks/live/04-bootloader-config.hook.chroot"
+    fi
+    
+    # Copy editor configuration script
     cp "$SCRIPTS_DIR/configure-editor.sh" "$LIVE_BUILD_DIR/config/hooks/live/9999-configure-editor.hook.chroot"
     chmod +x "$LIVE_BUILD_DIR/config/hooks/live/9999-configure-editor.hook.chroot"
 }
@@ -193,15 +310,48 @@ build_iso() {
     # Clean previous build
     lb clean
     
-    # Build the system
-    lb build
+    # Build the complete ISO using lb build (handles all stages properly)
+    log "Building complete ARM64 live ISO..."
+    if ! lb build 2>&1 | tee build.log; then
+        log "Build failed. Checking logs..."
+        
+        # Show the last part of the build log for debugging
+        if [ -f build.log ]; then
+            echo "=== Last 50 lines of build log ==="
+            tail -50 build.log
+        fi
+        
+        # Show specific stage logs if they exist
+        for stage_log in bootstrap.log chroot.log binary.log; do
+            if [ -f "$stage_log" ]; then
+                echo "=== Last 20 lines of $stage_log ==="
+                tail -20 "$stage_log"
+            fi
+        done
+        
+        error "ISO build failed"
+    fi
     
     # Move ISO to output directory
     if [ -f "live-image-$ARCH.hybrid.iso" ]; then
         mv "live-image-$ARCH.hybrid.iso" "$ISO_OUTPUT_DIR/$ISO_NAME"
         log "ISO created successfully: $ISO_OUTPUT_DIR/$ISO_NAME"
+        
+        # Show ISO details
+        ls -lh "$ISO_OUTPUT_DIR/$ISO_NAME"
+        
+        # Verify ISO integrity
+        if command -v file >/dev/null 2>&1; then
+            file "$ISO_OUTPUT_DIR/$ISO_NAME"
+        fi
+        
+        if command -v isoinfo >/dev/null 2>&1; then
+            log "ISO filesystem information:"
+            isoinfo -d -i "$ISO_OUTPUT_DIR/$ISO_NAME" | head -10
+        fi
+        
     else
-        error "ISO build failed"
+        error "ISO build failed - no ISO file found"
     fi
 }
 

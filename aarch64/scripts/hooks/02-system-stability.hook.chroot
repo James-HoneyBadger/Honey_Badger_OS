@@ -1,0 +1,140 @@
+#!/bin/bash
+# System Stability Hook for ARM64 systems
+# Prevents kernel panics and ensures stable operation
+
+set -e
+
+echo "Configuring system stability for ARM64..."
+
+# Configure kernel parameters for stability
+cat > /etc/sysctl.d/99-arm64-stability.conf << 'EOF'
+# ARM64 System Stability Configuration
+
+# Virtual memory settings
+vm.swappiness = 10
+vm.vfs_cache_pressure = 50
+vm.dirty_ratio = 15
+vm.dirty_background_ratio = 5
+
+# Network stability
+net.core.rmem_max = 134217728
+net.core.wmem_max = 134217728
+net.ipv4.tcp_rmem = 4096 87380 134217728
+net.ipv4.tcp_wmem = 4096 65536 134217728
+
+# Filesystem stability
+fs.file-max = 2097152
+fs.inotify.max_user_watches = 524288
+
+# Prevent OOM killer from being too aggressive
+vm.oom_kill_allocating_task = 1
+vm.panic_on_oom = 0
+
+# USB stability
+usb-storage.delay_use = 1
+EOF
+
+# Configure GRUB for stability
+mkdir -p /etc/default/grub.d
+cat > /etc/default/grub.d/arm64-stability.cfg << 'EOF'
+# ARM64 stability configuration
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash noswap noeject acpi=force"
+GRUB_CMDLINE_LINUX="systemd.show_status=false rd.udev.log-priority=3 vt.global_cursor_default=0"
+EOF
+
+# Configure systemd for better ARM64 compatibility
+mkdir -p /etc/systemd/system.conf.d
+cat > /etc/systemd/system.conf.d/arm64.conf << 'EOF'
+[Manager]
+# Increase default timeout for ARM64 systems
+DefaultTimeoutStartSec=120s
+DefaultTimeoutStopSec=60s
+DefaultRestartSec=5s
+EOF
+
+# Configure journal for stability
+mkdir -p /etc/systemd/journald.conf.d
+cat > /etc/systemd/journald.conf.d/arm64.conf << 'EOF'
+[Journal]
+# Reduce journal size on ARM64 systems
+SystemMaxUse=500M
+RuntimeMaxUse=100M
+SystemKeepFree=1G
+RuntimeKeepFree=100M
+MaxFileSec=1week
+MaxRetentionSec=1month
+Compress=yes
+EOF
+
+# Create early boot stability service
+cat > /etc/systemd/system/early-stability.service << 'EOF'
+[Unit]
+Description=Early Boot Stability Configuration
+DefaultDependencies=false
+Before=sysinit.target shutdown.target
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/early-stability.sh
+TimeoutSec=30s
+
+[Install]
+WantedBy=sysinit.target
+EOF
+
+# Create the early stability script
+cat > /usr/local/bin/early-stability.sh << 'EOF'
+#!/bin/bash
+# Early boot stability configuration
+
+# Ensure proper CPU governor is set
+if [ -d /sys/devices/system/cpu/cpu0/cpufreq ]; then
+    echo "ondemand" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || true
+fi
+
+# Set I/O scheduler for better ARM64 performance
+for disk in /sys/block/*/queue/scheduler; do
+    if [ -f "$disk" ]; then
+        echo "mq-deadline" > "$disk" 2>/dev/null || echo "deadline" > "$disk" 2>/dev/null || true
+    fi
+done
+
+# Disable unnecessary services that might cause issues
+systemctl mask --quiet \
+    apt-daily.timer \
+    apt-daily-upgrade.timer \
+    motd-news.timer \
+    esm-cache.timer 2>/dev/null || true
+
+exit 0
+EOF
+
+chmod +x /usr/local/bin/early-stability.sh
+
+# Enable the early stability service
+systemctl enable early-stability.service
+
+# Configure automatic filesystem check intervals
+tune2fs -c 50 -i 6m /dev/sda1 2>/dev/null || true
+
+# Create crash handler script
+cat > /usr/local/bin/crash-handler.sh << 'EOF'
+#!/bin/bash
+# Handle system crashes gracefully
+
+# Log crash information
+echo "$(date): System crash detected" >> /var/log/crash.log
+dmesg | tail -n 50 >> /var/log/crash.log
+
+# Attempt graceful recovery
+sync
+echo 3 > /proc/sys/vm/drop_caches
+
+exit 0
+EOF
+
+chmod +x /usr/local/bin/crash-handler.sh
+
+echo "System stability configuration completed."

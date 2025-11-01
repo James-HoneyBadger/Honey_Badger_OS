@@ -1,0 +1,25 @@
+# Essential packages only for space-constrained build
+live-boot
+live-config
+live-config-systemd
+systemd
+systemd-sysv
+udev
+dbus
+network-manager
+sudo
+nano
+wget
+curl
+openssh-client
+git
+firefox-esr
+xfce4
+xfce4-terminal
+thunar
+lightdm
+lightdm-gtk-greeter
+firmware-linux
+firmware-linux-free
+linux-image-arm64
+grub-efi-arm64
