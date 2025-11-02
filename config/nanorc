@@ -1,0 +1,37 @@
+# Honey Badger OS - Enhanced nano configuration
+# Key bindings
+bind ^S savefile main
+bind ^Q exit all
+bind ^X cut main
+bind ^C copy main
+bind ^V paste main
+bind ^Z undo main
+bind ^Y redo main
+bind ^F whereis main
+bind ^R replace main
+bind ^G gotoline main
+
+# Display options
+set linenumbers
+set mouse
+set softwrap
+set tabstospaces
+set tabsize 4
+set autoindent
+set backup
+set backupdir "~/.nano/backups"
+set historylog
+set positionlog
+
+# Appearance
+set titlecolor brightwhite,blue
+set statuscolor brightwhite,green
+set keycolor cyan
+set numbercolor yellow
+
+# Syntax highlighting
+include "/usr/share/nano/*.nanorc"
+
+# Custom syntax highlighting for common files
+syntax "default"
+color brightwhite ".*"
