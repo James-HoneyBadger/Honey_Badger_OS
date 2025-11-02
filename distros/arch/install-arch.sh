@@ -289,19 +289,24 @@ aur_package_exists() {
     # Prefer curl, fall back to wget
     local out
     if command -v curl &>/dev/null; then
-        out=$(curl -fsS "https://aur.archlinux.org/rpc/?v=5&type=info&arg=${pkg}" 2>/dev/null || true)
+        out=$(curl -fsS --max-time 5 "https://aur.archlinux.org/rpc/?v=5&type=info&arg=${pkg}" 2>/dev/null || true)
     elif command -v wget &>/dev/null; then
-        out=$(wget -qO- "https://aur.archlinux.org/rpc/?v=5&type=info&arg=${pkg}" 2>/dev/null || true)
+        out=$(wget -qO- --timeout=5 "https://aur.archlinux.org/rpc/?v=5&type=info&arg=${pkg}" 2>/dev/null || true)
     else
         # Can't verify; assume exists to avoid false negatives
         return 0
     fi
 
-    # Quick check for resultcount > 0
-    if echo "$out" | grep -q '"resultcount"[[:space:]]*:[[:space:]]*[1-9]'; then
+    # Network error or empty response: do not block install
+    if [[ -z "$out" ]]; then
         return 0
     fi
-    return 1
+
+    # If explicitly zero, treat as not found; otherwise assume found
+    if echo "$out" | grep -q '"resultcount"[[:space:]]*:[[:space:]]*0'; then
+        return 1
+    fi
+    return 0
 }
 
 #######################################
