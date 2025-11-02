@@ -279,6 +279,54 @@ install_aur_helper() {
 }
 
 #######################################
+# Check if an AUR package exists via AUR RPC
+# Arguments:
+#   $1: package name
+# Returns: 0 if exists, 1 otherwise
+#######################################
+aur_package_exists() {
+    local pkg="$1"
+    # Prefer curl, fall back to wget
+    local out
+    if command -v curl &>/dev/null; then
+        out=$(curl -fsS "https://aur.archlinux.org/rpc/?v=5&type=info&arg=${pkg}" 2>/dev/null || true)
+    elif command -v wget &>/dev/null; then
+        out=$(wget -qO- "https://aur.archlinux.org/rpc/?v=5&type=info&arg=${pkg}" 2>/dev/null || true)
+    else
+        # Can't verify; assume exists to avoid false negatives
+        return 0
+    fi
+
+    # Quick check for resultcount > 0
+    if echo "$out" | grep -q '"resultcount"[[:space:]]*:[[:space:]]*[1-9]'; then
+        return 0
+    fi
+    return 1
+}
+
+#######################################
+# Detect simple self-concatenated package names like foofoo
+# Arguments:
+#   $1: package name
+# Returns: 0 if looks duplicated, 1 otherwise
+#######################################
+is_self_concatenated() {
+    local pkg="$1"
+    local len=${#pkg}
+    # Only consider even-length strings
+    if (( len % 2 != 0 )); then
+        return 1
+    fi
+    local half=$((len / 2))
+    local a=${pkg:0:half}
+    local b=${pkg:half:half}
+    if [[ "$a" == "$b" ]]; then
+        return 0
+    fi
+    return 1
+}
+
+#######################################
 # Install development tools
 #######################################
 install_development_tools() {
@@ -365,12 +413,30 @@ install_development_tools() {
     if [[ ${#aur_packages[@]} -gt 0 ]]; then
         print_status "Installing development packages from AUR..."
         print_status "AUR packages to install: ${aur_packages[*]}"
-        
+
         # Install packages individually to avoid dependency loops
         for package in "${aur_packages[@]}"; do
+            # Basic sanity checks
+            if is_self_concatenated "$package"; then
+                print_warning "Skipping suspicious self-concatenated AUR package name: $package"
+                continue
+            fi
+
+            if ! aur_package_exists "$package"; then
+                print_warning "AUR package not found: $package. Skipping."
+                continue
+            fi
+
             print_status "Installing AUR package: $package"
-            if ! yay -S --noconfirm --needed "$package"; then
-                print_warning "Failed to install AUR package: $package"
+            # Capture output to parse for known build-time dependency warnings
+            if ! yay -S --noconfirm --needed "$package" 2>&1 | tee /tmp/yay-install-${package//[^a-zA-Z0-9._-]/_}.log; then
+                # Inspect the log for circular/self-referential dependency messages
+                if grep -q -i "circular dependencies not allowed" /tmp/yay-install-${package//[^a-zA-Z0-9._-]/_}.log || \
+                   grep -q -i "self-referential dependencies not allowed" /tmp/yay-install-${package//[^a-zA-Z0-9._-]/_}.log; then
+                    print_warning "AUR package $package reported circular/self-referential dependency issues. Skipping."
+                    continue
+                fi
+                print_warning "Failed to install AUR package: $package (see /tmp/yay-install-${package//[^a-zA-Z0-9._-]/_}.log)"
                 print_warning "Continuing with remaining packages..."
             fi
         done
@@ -508,12 +574,28 @@ install_productivity_apps() {
     if [[ ${#aur_packages[@]} -gt 0 ]]; then
         print_status "Installing productivity packages from AUR..."
         print_status "AUR packages to install: ${aur_packages[*]}"
-        
+
         # Install packages individually to avoid dependency loops
         for package in "${aur_packages[@]}"; do
+            # Basic sanity checks
+            if is_self_concatenated "$package"; then
+                print_warning "Skipping suspicious self-concatenated AUR package name: $package"
+                continue
+            fi
+
+            if ! aur_package_exists "$package"; then
+                print_warning "AUR package not found: $package. Skipping."
+                continue
+            fi
+
             print_status "Installing AUR package: $package"
-            if ! yay -S --noconfirm --needed "$package"; then
-                print_warning "Failed to install AUR package: $package"
+            if ! yay -S --noconfirm --needed "$package" 2>&1 | tee /tmp/yay-install-${package//[^a-zA-Z0-9._-]/_}.log; then
+                if grep -q -i "circular dependencies not allowed" /tmp/yay-install-${package//[^a-zA-Z0-9._-]/_}.log || \
+                   grep -q -i "self-referential dependencies not allowed" /tmp/yay-install-${package//[^a-zA-Z0-9._-]/_}.log; then
+                    print_warning "AUR package $package reported circular/self-referential dependency issues. Skipping."
+                    continue
+                fi
+                print_warning "Failed to install AUR package: $package (see /tmp/yay-install-${package//[^a-zA-Z0-9._-]/_}.log)"
                 print_warning "Continuing with remaining packages..."
             fi
         done
