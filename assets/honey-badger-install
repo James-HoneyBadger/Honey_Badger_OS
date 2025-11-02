@@ -1,0 +1,422 @@
+#!/bin/bash
+# Honey Badger OS - Package Installation Utility
+# This script provides a unified interface for installing packages across distributions
+
+set -euo pipefail
+
+# Colors
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[0;33m'
+readonly BLUE='\033[0;34m'
+readonly CYAN='\033[0;36m'
+readonly BOLD='\033[1m'
+readonly NC='\033[0m'
+
+# Logging
+readonly LOG_FILE="/tmp/honey-badger-install.log"
+
+# Logging functions
+log_info() {
+    echo -e "${CYAN}[INFO]${NC} $1" | tee -a "$LOG_FILE"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1" | tee -a "$LOG_FILE"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1" | tee -a "$LOG_FILE"
+}
+
+log_step() {
+    echo -e "${BLUE}${BOLD}[STEP]${NC} $1" | tee -a "$LOG_FILE"
+}
+
+# Show banner
+show_banner() {
+    echo -e "${YELLOW}${BOLD}"
+    echo "  🦡 ================================================== 🦡"
+    echo "           HONEY BADGER OS PACKAGE INSTALLER"
+    echo "            Fearless Software Installation"
+    echo "  🦡 ================================================== 🦡"
+    echo -e "${NC}"
+}
+
+# Detect package manager
+detect_package_manager() {
+    if command -v pacman >/dev/null 2>&1; then
+        echo "pacman"
+    elif command -v apt >/dev/null 2>&1; then
+        echo "apt"
+    elif command -v dnf >/dev/null 2>&1; then
+        echo "dnf"
+    elif command -v yum >/dev/null 2>&1; then
+        echo "yum"
+    elif command -v xbps-install >/dev/null 2>&1; then
+        echo "xbps"
+    elif command -v slackpkg >/dev/null 2>&1; then
+        echo "slackpkg"
+    else
+        echo "unknown"
+    fi
+}
+
+# Install packages using system package manager
+install_system_packages() {
+    local pm="$1"
+    shift
+    local packages=("$@")
+    
+    log_step "Installing packages using $pm: ${packages[*]}"
+    
+    case "$pm" in
+        pacman)
+            sudo pacman -S --noconfirm "${packages[@]}"
+            ;;
+        apt)
+            sudo apt update
+            sudo apt install -y "${packages[@]}"
+            ;;
+        dnf)
+            sudo dnf install -y "${packages[@]}"
+            ;;
+        yum)
+            sudo yum install -y "${packages[@]}"
+            ;;
+        xbps)
+            sudo xbps-install -S "${packages[@]}"
+            ;;
+        slackpkg)
+            sudo slackpkg install "${packages[@]}"
+            ;;
+        *)
+            log_error "Unsupported package manager: $pm"
+            return 1
+            ;;
+    esac
+}
+
+# Install from AUR (Arch User Repository)
+install_aur_packages() {
+    local packages=("$@")
+    
+    if ! command -v yay >/dev/null 2>&1; then
+        log_error "yay not found. Install yay first to use AUR packages."
+        return 1
+    fi
+    
+    log_step "Installing AUR packages: ${packages[*]}"
+    yay -S --noconfirm "${packages[@]}"
+}
+
+# Install Flatpak packages
+install_flatpak_packages() {
+    local packages=("$@")
+    
+    if ! command -v flatpak >/dev/null 2>&1; then
+        log_error "Flatpak not found. Install flatpak first."
+        return 1
+    fi
+    
+    log_step "Installing Flatpak packages: ${packages[*]}"
+    for package in "${packages[@]}"; do
+        flatpak install -y flathub "$package"
+    done
+}
+
+# Install Snap packages
+install_snap_packages() {
+    local packages=("$@")
+    
+    if ! command -v snap >/dev/null 2>&1; then
+        log_error "Snap not found. Install snapd first."
+        return 1
+    fi
+    
+    log_step "Installing Snap packages: ${packages[*]}"
+    for package in "${packages[@]}"; do
+        sudo snap install "$package"
+    done
+}
+
+# Install development tools
+install_dev_tools() {
+    local tools=("$@")
+    
+    log_step "Installing development tools: ${tools[*]}"
+    
+    for tool in "${tools[@]}"; do
+        case "$tool" in
+            node|nodejs)
+                log_info "Installing Node.js..."
+                if command -v nvm >/dev/null 2>&1; then
+                    nvm install --lts
+                else
+                    local pm=$(detect_package_manager)
+                    case "$pm" in
+                        pacman) sudo pacman -S --noconfirm nodejs npm ;;
+                        apt) sudo apt install -y nodejs npm ;;
+                        dnf) sudo dnf install -y nodejs npm ;;
+                        yum) sudo yum install -y nodejs npm ;;
+                        *) log_error "Cannot install Node.js on this system" ;;
+                    esac
+                fi
+                ;;
+            python|python3)
+                log_info "Installing Python 3..."
+                local pm=$(detect_package_manager)
+                case "$pm" in
+                    pacman) sudo pacman -S --noconfirm python python-pip ;;
+                    apt) sudo apt install -y python3 python3-pip ;;
+                    dnf) sudo dnf install -y python3 python3-pip ;;
+                    yum) sudo yum install -y python3 python3-pip ;;
+                    *) log_error "Cannot install Python on this system" ;;
+                esac
+                ;;
+            go|golang)
+                log_info "Installing Go..."
+                local pm=$(detect_package_manager)
+                case "$pm" in
+                    pacman) sudo pacman -S --noconfirm go ;;
+                    apt) sudo apt install -y golang-go ;;
+                    dnf) sudo dnf install -y golang ;;
+                    yum) sudo yum install -y golang ;;
+                    *) log_error "Cannot install Go on this system" ;;
+                esac
+                ;;
+            rust)
+                log_info "Installing Rust..."
+                if ! command -v rustup >/dev/null 2>&1; then
+                    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+                    source "$HOME/.cargo/env"
+                fi
+                rustup update
+                ;;
+            docker)
+                log_info "Installing Docker..."
+                local pm=$(detect_package_manager)
+                case "$pm" in
+                    pacman) sudo pacman -S --noconfirm docker docker-compose ;;
+                    apt) sudo apt install -y docker.io docker-compose ;;
+                    dnf) sudo dnf install -y docker docker-compose ;;
+                    yum) sudo yum install -y docker docker-compose ;;
+                    *) log_error "Cannot install Docker on this system" ;;
+                esac
+                sudo systemctl enable --now docker
+                sudo usermod -aG docker "$USER"
+                ;;
+            *)
+                log_error "Unknown development tool: $tool"
+                ;;
+        esac
+    done
+}
+
+# Show package information
+show_package_info() {
+    local package="$1"
+    local pm=$(detect_package_manager)
+    
+    log_step "Showing information for package: $package"
+    
+    case "$pm" in
+        pacman)
+            pacman -Si "$package" 2>/dev/null || pacman -Qi "$package" 2>/dev/null || log_error "Package not found: $package"
+            ;;
+        apt)
+            apt show "$package" 2>/dev/null || log_error "Package not found: $package"
+            ;;
+        dnf)
+            dnf info "$package" 2>/dev/null || log_error "Package not found: $package"
+            ;;
+        yum)
+            yum info "$package" 2>/dev/null || log_error "Package not found: $package"
+            ;;
+        xbps)
+            xbps-query -R "$package" 2>/dev/null || log_error "Package not found: $package"
+            ;;
+        *)
+            log_error "Package information not available for $pm"
+            ;;
+    esac
+}
+
+# Search for packages
+search_packages() {
+    local query="$1"
+    local pm=$(detect_package_manager)
+    
+    log_step "Searching for packages matching: $query"
+    
+    case "$pm" in
+        pacman)
+            pacman -Ss "$query"
+            ;;
+        apt)
+            apt search "$query"
+            ;;
+        dnf)
+            dnf search "$query"
+            ;;
+        yum)
+            yum search "$query"
+            ;;
+        xbps)
+            xbps-query -Rs "$query"
+            ;;
+        *)
+            log_error "Package search not available for $pm"
+            ;;
+    esac
+}
+
+# Show help
+show_help() {
+    echo "Honey Badger OS Package Installer"
+    echo
+    echo "Usage: $0 [options] [packages...]"
+    echo
+    echo "Options:"
+    echo "  --aur            Install from AUR (Arch only)"
+    echo "  --flatpak        Install Flatpak packages"
+    echo "  --snap           Install Snap packages"
+    echo "  --dev            Install development tools"
+    echo "  --info <pkg>     Show package information"
+    echo "  --search <query> Search for packages"
+    echo "  --help, -h       Show this help message"
+    echo
+    echo "Examples:"
+    echo "  $0 firefox git nano                 # Install system packages"
+    echo "  $0 --flatpak org.mozilla.Firefox   # Install Flatpak package"
+    echo "  $0 --dev rust go python             # Install dev tools"
+    echo "  $0 --search multimedia              # Search for packages"
+    echo "  $0 --info firefox                   # Show package info"
+    echo
+    echo "🦡 Like the honey badger, install fearlessly! 🦡"
+}
+
+# Check privileges
+check_privileges() {
+    if [[ $EUID -eq 0 ]]; then
+        log_error "This script should not be run as root!"
+        log_info "Please run as a regular user with sudo privileges."
+        exit 1
+    fi
+}
+
+# Main function
+main() {
+    # Setup logging
+    echo "Honey Badger OS Package Installation Log - $(date)" > "$LOG_FILE"
+    
+    if [[ $# -eq 0 ]]; then
+        show_banner
+        show_help
+        exit 0
+    fi
+    
+    show_banner
+    check_privileges
+    
+    local pm=$(detect_package_manager)
+    if [[ "$pm" == "unknown" ]]; then
+        log_error "No supported package manager found!"
+        log_info "Supported: pacman, apt, dnf, yum, xbps, slackpkg"
+        exit 1
+    fi
+    
+    log_info "Detected package manager: $pm"
+    
+    # Parse command line options
+    local install_method="system"
+    local packages=()
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --aur)
+                install_method="aur"
+                ;;
+            --flatpak)
+                install_method="flatpak"
+                ;;
+            --snap)
+                install_method="snap"
+                ;;
+            --dev)
+                install_method="dev"
+                ;;
+            --info)
+                shift
+                if [[ $# -eq 0 ]]; then
+                    log_error "--info requires a package name"
+                    exit 1
+                fi
+                show_package_info "$1"
+                exit 0
+                ;;
+            --search)
+                shift
+                if [[ $# -eq 0 ]]; then
+                    log_error "--search requires a search query"
+                    exit 1
+                fi
+                search_packages "$1"
+                exit 0
+                ;;
+            --help|-h)
+                show_help
+                exit 0
+                ;;
+            -*)
+                log_error "Unknown option: $1"
+                show_help
+                exit 1
+                ;;
+            *)
+                packages+=("$1")
+                ;;
+        esac
+        shift
+    done
+    
+    if [[ ${#packages[@]} -eq 0 ]]; then
+        log_error "No packages specified!"
+        show_help
+        exit 1
+    fi
+    
+    # Install packages based on method
+    case "$install_method" in
+        system)
+            install_system_packages "$pm" "${packages[@]}"
+            ;;
+        aur)
+            if [[ "$pm" != "pacman" ]]; then
+                log_error "AUR installation only available on Arch Linux"
+                exit 1
+            fi
+            install_aur_packages "${packages[@]}"
+            ;;
+        flatpak)
+            install_flatpak_packages "${packages[@]}"
+            ;;
+        snap)
+            install_snap_packages "${packages[@]}"
+            ;;
+        dev)
+            install_dev_tools "${packages[@]}"
+            ;;
+    esac
+    
+    log_success "Package installation completed!"
+    echo -e "${YELLOW}🦡 Fearlessly installed! Run 'honey-badger-info' to see your updated system. 🦡${NC}"
+}
+
+# Handle interruption
+trap 'echo -e "\n${RED}Installation interrupted by user${NC}"; exit 1' INT TERM
+
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

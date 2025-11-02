@@ -1,0 +1,178 @@
+#!/bin/bash
+# Honey Badger OS - System Information Utility
+# This script displays comprehensive system information with Honey Badger branding
+
+set -euo pipefail
+
+# Colors
+readonly YELLOW='\033[0;33m'
+readonly GREEN='\033[0;32m'
+readonly CYAN='\033[0;36m'
+readonly BLUE='\033[0;34m'
+readonly MAGENTA='\033[0;35m'
+readonly WHITE='\033[0;37m'
+readonly BOLD='\033[1m'
+readonly NC='\033[0m'
+
+# Configuration file
+readonly CONFIG_FILE="/etc/honey-badger-os.conf"
+readonly USER_CONFIG="$HOME/.config/honey-badger-os.conf"
+
+# Load configuration
+load_config() {
+    [[ -f "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
+    [[ -f "$USER_CONFIG" ]] && source "$USER_CONFIG"
+}
+
+# Show Honey Badger banner
+show_banner() {
+    echo -e "${YELLOW}${BOLD}"
+    echo "  🦡 ================================================== 🦡"
+    echo "                 HONEY BADGER OS"
+    echo "              System Information Display"
+    echo "  🦡 ================================================== 🦡"
+    echo -e "${NC}"
+}
+
+# Show system information
+show_system_info() {
+    echo -e "${BOLD}${BLUE}🖥️  System Information${NC}"
+    echo -e "${CYAN}Hostname:${NC}        $(hostname)"
+    echo -e "${CYAN}Kernel:${NC}          $(uname -r)"
+    echo -e "${CYAN}Architecture:${NC}    $(uname -m)"
+    echo -e "${CYAN}Uptime:${NC}          $(uptime -p 2>/dev/null || uptime)"
+    
+    if [[ -f /etc/os-release ]]; then
+        source /etc/os-release
+        echo -e "${CYAN}Distribution:${NC}    ${PRETTY_NAME:-$ID}"
+        echo -e "${CYAN}Version:${NC}        ${VERSION:-$VERSION_ID}"
+    fi
+    echo
+}
+
+# Show Honey Badger specific information
+show_honey_badger_info() {
+    echo -e "${BOLD}${YELLOW}🦡 Honey Badger OS Information${NC}"
+    
+    local version="${HONEY_BADGER_VERSION:-Unknown}"
+    local codename="${HONEY_BADGER_CODENAME:-Unknown}"
+    local build_date="${HONEY_BADGER_BUILD_DATE:-Unknown}"
+    
+    echo -e "${CYAN}Version:${NC}         $version"
+    echo -e "${CYAN}Codename:${NC}       $codename"
+    echo -e "${CYAN}Build Date:${NC}     $build_date"
+    
+    # Check if nano is configured
+    if [[ -f "$HOME/.nanorc" ]] && grep -q "Honey Badger" "$HOME/.nanorc" 2>/dev/null; then
+        echo -e "${CYAN}Nano Config:${NC}    ✓ Enhanced"
+    else
+        echo -e "${CYAN}Nano Config:${NC}    ✗ Default"
+    fi
+    
+    # Check desktop environment
+    if [[ -n "${XDG_CURRENT_DESKTOP:-}" ]]; then
+        echo -e "${CYAN}Desktop:${NC}        $XDG_CURRENT_DESKTOP"
+    elif pgrep -x "xfce4-panel" >/dev/null 2>&1; then
+        echo -e "${CYAN}Desktop:${NC}        XFCE4"
+    else
+        echo -e "${CYAN}Desktop:${NC}        Command Line"
+    fi
+    echo
+}
+
+# Show hardware information
+show_hardware_info() {
+    echo -e "${BOLD}${GREEN}🔧 Hardware Information${NC}"
+    
+    # CPU information
+    if [[ -f /proc/cpuinfo ]]; then
+        local cpu_model=$(grep "model name" /proc/cpuinfo | head -1 | cut -d: -f2 | sed 's/^ *//')
+        local cpu_cores=$(nproc)
+        echo -e "${CYAN}CPU:${NC}             $cpu_model"
+        echo -e "${CYAN}CPU Cores:${NC}       $cpu_cores"
+    fi
+    
+    # Memory information
+    if [[ -f /proc/meminfo ]]; then
+        local total_mem=$(awk '/MemTotal/ {printf "%.1f GB", $2/1024/1024}' /proc/meminfo)
+        local avail_mem=$(awk '/MemAvailable/ {printf "%.1f GB", $2/1024/1024}' /proc/meminfo)
+        echo -e "${CYAN}Total Memory:${NC}    $total_mem"
+        echo -e "${CYAN}Available:${NC}       $avail_mem"
+    fi
+    
+    # Disk usage for root partition
+    local disk_usage=$(df -h / | awk 'NR==2 {print $3 "/" $2 " (" $5 " used)"}')
+    echo -e "${CYAN}Root Disk:${NC}       $disk_usage"
+    echo
+}
+
+# Show development environment
+show_dev_environment() {
+    echo -e "${BOLD}${MAGENTA}⚡ Development Environment${NC}"
+    
+    # Check installed languages/tools
+    local tools=(
+        "python3:Python"
+        "node:Node.js" 
+        "go:Go"
+        "rustc:Rust"
+        "java:Java"
+        "gcc:GCC"
+        "git:Git"
+        "docker:Docker"
+        "code:VS Code"
+        "nano:Nano"
+    )
+    
+    for tool_info in "${tools[@]}"; do
+        IFS=':' read -r cmd name <<< "$tool_info"
+        if command -v "$cmd" >/dev/null 2>&1; then
+            local version=$(
+                case "$cmd" in
+                    python3) python3 --version 2>&1 | cut -d' ' -f2 ;;
+                    node) node --version 2>&1 | sed 's/^v//' ;;
+                    go) go version 2>&1 | awk '{print $3}' | sed 's/go//' ;;
+                    rustc) rustc --version 2>&1 | awk '{print $2}' ;;
+                    java) java -version 2>&1 | head -1 | awk -F'"' '{print $2}' ;;
+                    gcc) gcc --version 2>&1 | head -1 | awk '{print $4}' ;;
+                    git) git --version 2>&1 | awk '{print $3}' ;;
+                    docker) docker --version 2>&1 | awk '{print $3}' | sed 's/,//' ;;
+                    nano) nano --version 2>&1 | head -1 | awk '{print $4}' ;;
+                    *) "$cmd" --version 2>&1 | head -1 ;;
+                esac
+            )
+            echo -e "${CYAN}$name:${NC} ✓ $version"
+        fi
+    done
+    echo
+}
+
+# Show useful tips
+show_tips() {
+    echo -e "${BOLD}${WHITE}💡 Honey Badger Tips${NC}"
+    echo "• Use 'honey-badger-update' to update your system"
+    echo "• Use 'honey-badger-install <package>' to install software"
+    echo "• Enhanced nano editor with syntax highlighting is configured"
+    echo "• Check ~/.nanorc for editor configuration"
+    if [[ -d "/etc/xdg/xfce4" ]] || [[ -d "$HOME/.config/xfce4" ]]; then
+        echo "• XFCE desktop with Honey Badger theme is available"
+    fi
+    echo -e "• Like the honey badger: ${BOLD}be fearless, be determined!${NC} 🦡"
+    echo
+}
+
+# Main function
+main() {
+    load_config
+    show_banner
+    show_honey_badger_info
+    show_system_info
+    show_hardware_info
+    show_dev_environment
+    show_tips
+}
+
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
