@@ -510,6 +510,24 @@ install_xfce_desktop() {
     sudo systemctl enable lightdm
     
     print_success "XFCE desktop environment installed"
+
+    # Ensure system-wide XFCE menu exists to avoid warnings from desktop components
+    # This requires root; only attempt if sudo is available
+    if sudo -n true 2>/dev/null; then
+        if [[ ! -f "/etc/xdg/menus/xfce-applications.menu" ]]; then
+            print_status "Creating system fallback XFCE applications menu at /etc/xdg/menus/xfce-applications.menu"
+            sudo bash -c 'cat > /etc/xdg/menus/xfce-applications.menu <<"EOF"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Menu PUBLIC "-//freedesktop//DTD Menu 1.0//EN" "http://www.freedesktop.org/standards/menu-spec/menu-1.0.dtd">
+<Menu>
+  <Name>Applications</Name>
+  <DefaultAppDirs/>
+</Menu>
+EOF'
+        fi
+    else
+        print_warning "Cannot create /etc/xdg/menus/xfce-applications.menu without sudo; user-level fallback will be used instead"
+    fi
 }
 
 #######################################
@@ -706,7 +724,8 @@ configure_honey_badger_theme() {
     fi
     
     # Create theme directories (ensure gtk-3.0 directory exists)
-    mkdir -p "$HOME/.themes/HoneyBadger/gtk-3.0"
+        mkdir -p "$HOME/.themes/HoneyBadger"
+        mkdir -p "$HOME/.themes/HoneyBadger/gtk-3.0"
     mkdir -p "$HOME/.local/share/honey-badger"
     mkdir -p "$HOME/.config/gtk-3.0"
     mkdir -p "$HOME/.config/xfce4"
@@ -909,6 +928,24 @@ configure_xfce() {
     
     # Wait for XFCE to be available
     sleep 2
+
+    # Ensure user-level XFCE menu file exists to avoid warnings like:
+    # "failed to load the applications menu file \"menus/xfce-applications.menu\" not found"
+    if [[ ! -d "$HOME/.config/menus" ]]; then
+        mkdir -p "$HOME/.config/menus"
+    fi
+
+    if [[ ! -f "$HOME/.config/menus/xfce-applications.menu" ]]; then
+        print_status "Creating fallback XFCE applications menu at $HOME/.config/menus/xfce-applications.menu"
+        cat > "$HOME/.config/menus/xfce-applications.menu" << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Menu PUBLIC "-//freedesktop//DTD Menu 1.0//EN" "http://www.freedesktop.org/standards/menu-spec/menu-1.0.dtd">
+<Menu>
+  <Name>Applications</Name>
+  <DefaultAppDirs/>
+</Menu>
+EOF
+    fi
     
     # Set theme
     xfconf-query -c xsettings -p /Net/ThemeName -s "HoneyBadger" 2>/dev/null || true
