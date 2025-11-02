@@ -1,3 +1,29 @@
+## Unattended and non-interactive usage
+
+The universal installer supports safe, unattended runs (e.g., CI or when no TTY is attached).
+
+- Unattended install with explicit type:
+
+   ```bash
+   ./install.sh --unattended --type full
+   ```
+
+- Equivalent using environment variables (and redirecting stdin to avoid prompts):
+
+   ```bash
+   HONEY_BADGER_AUTO_CONFIRM=1 HONEY_BADGER_INSTALL_TYPE=developer ./install.sh < /dev/null
+   ```
+
+- Preview without making changes (dry-run):
+
+   ```bash
+   ./install.sh --dry-run --unattended --type minimal
+   ```
+
+Notes:
+- In unattended mode, the final reboot is not performed automatically; reboot manually.
+- In non-interactive mode without auto-confirm, the script exits early to avoid hanging on prompts.
+
 # 🦡 Honey Badger OS# 🦡 Honey Badger OS
 
 ## Fearless Multi-Distribution Post-Install Scripts## Fearless Multi-Distribution Post-Install Scripts

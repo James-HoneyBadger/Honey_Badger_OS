@@ -48,6 +48,86 @@ readonly DESKTOP="desktop"
 # Default installation type
 INSTALL_TYPE="${FULL}"
 
+# Detect non-interactive execution (no TTY on stdin). If running unattended
+# the caller can set HONEY_BADGER_AUTO_CONFIRM=1 to accept prompts automatically.
+if [[ ! -t 0 ]]; then
+    NONINTERACTIVE=true
+else
+    NONINTERACTIVE=false
+fi
+
+# CLI options (supports long and short forms)
+UNATTENDED=false
+DRY_RUN=false
+TYPE_EXPLICIT=false
+
+show_usage() {
+    cat <<EOF
+Usage: ${0##*/} [options]
+
+Options:
+  -y, --unattended    Run without interactive prompts (equivalent to HONEY_BADGER_AUTO_CONFIRM=1)
+    -t, --type <type>   Choose installation type: full | developer | minimal | desktop
+  --dry-run           Show what would be done but do not perform actions
+  -h, --help          Show this help message
+
+Environment:
+  HONEY_BADGER_AUTO_CONFIRM=1  Alternative to --unattended to auto-confirm prompts
+    HONEY_BADGER_INSTALL_TYPE=...  Alternative to --type to select install type
+
+Examples:
+  ${0##*/} --unattended          # Run unattended (non-interactive)
+  HONEY_BADGER_AUTO_CONFIRM=1 ${0##*/} < /dev/null  # Unattended via env var
+  ${0##*/} --dry-run             # Show actions without executing
+    ${0##*/} --unattended --type minimal  # Unattended minimal install
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -y|--unattended)
+            UNATTENDED=true
+            shift
+            ;;
+        -t|--type)
+            shift
+            if [[ -z "${1:-}" ]]; then
+                echo "ERROR: --type requires an argument (full|developer|minimal|desktop)"
+                show_usage
+                exit 1
+            fi
+            INSTALL_TYPE="$(echo "$1" | tr '[:upper:]' '[:lower:]')"
+            TYPE_EXPLICIT=true
+            shift
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*|--*)
+            echo "ERROR: Unknown option: $1"
+            show_usage
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# If unattended flag supplied, set the auto-confirm env variable so existing logic works
+if [[ "$UNATTENDED" == "true" ]]; then
+    export HONEY_BADGER_AUTO_CONFIRM=1
+fi
+
 # Logging
 readonly LOG_FILE="/tmp/honeybadger-universal-install.log"
 exec 1> >(tee -a "${LOG_FILE}")
@@ -336,8 +416,12 @@ check_script_availability() {
     fi
     
     if [[ ! -x "$full_script_path" ]]; then
-        print_status "Making distribution script executable..."
-        chmod +x "$full_script_path"
+        if [[ "$DRY_RUN" == "true" ]]; then
+            print_status "[dry-run] Would make distribution script executable: $full_script_path"
+        else
+            print_status "Making distribution script executable..."
+            chmod +x "$full_script_path"
+        fi
     fi
 }
 
@@ -345,6 +429,48 @@ check_script_availability() {
 # Installation type selection
 #######################################
 select_install_type() {
+    # If type provided explicitly via CLI or environment, validate and skip menu
+    local env_type="${HONEY_BADGER_INSTALL_TYPE:-}"
+    if [[ -n "$env_type" && "$TYPE_EXPLICIT" != "true" ]]; then
+        INSTALL_TYPE="$(echo "$env_type" | tr '[:upper:]' '[:lower:]')"
+        TYPE_EXPLICIT=true
+    fi
+
+    case "$INSTALL_TYPE" in
+        "$FULL"|"$DEVELOPER"|"$MINIMAL"|"$DESKTOP")
+            if [[ "$TYPE_EXPLICIT" == "true" ]]; then
+                print_success "Selected (pre-set): $(echo "$INSTALL_TYPE" | tr '[:lower:]' '[:upper:]') installation"
+                return
+            fi
+            ;;
+        *)
+            # Not a valid pre-set type
+            if [[ "$TYPE_EXPLICIT" == "true" ]]; then
+                print_error "Invalid installation type: $INSTALL_TYPE"
+                print_colored "${WHITE}" "Valid types: full, developer, minimal, desktop"
+                exit 1
+            fi
+            ;;
+    esac
+
+    # Non-interactive handling
+    if [[ "$NONINTERACTIVE" == "true" ]]; then
+        if [[ "${HONEY_BADGER_AUTO_CONFIRM:-0}" == "1" ]]; then
+            INSTALL_TYPE="${INSTALL_TYPE:-$FULL}"
+            case "$INSTALL_TYPE" in
+                "$FULL"|"$DEVELOPER"|"$MINIMAL"|"$DESKTOP") : ;;
+                *) INSTALL_TYPE="$FULL" ;;
+            esac
+            print_status "Non-interactive: selected $(echo "$INSTALL_TYPE" | tr '[:lower:]' '[:upper:]') installation"
+            return
+        else
+            print_error "Non-interactive session without auto-confirm: cannot show selection menu."
+            print_colored "${WHITE}" "Set HONEY_BADGER_AUTO_CONFIRM=1 or pass --unattended and optionally --type <full|developer|minimal|desktop>."
+            exit 1
+        fi
+    fi
+
+    # Interactive menu
     print_colored "${YELLOW}" "🛠️  Select Installation Type:"
     echo
     print_colored "${WHITE}" "1) Full Installation (Recommended)"
@@ -378,7 +504,7 @@ select_install_type() {
     print_colored "${CYAN}" "   • Custom theming"
     print_colored "${CYAN}" "   • Size: ~2-3GB"
     echo
-    
+
     while true; do
         read -p "Enter your choice (1-4): " choice
         case $choice in
@@ -389,7 +515,7 @@ select_install_type() {
             *) print_error "Invalid choice. Please enter 1, 2, 3, or 4." ;;
         esac
     done
-    
+
     print_success "Selected: $(echo "$INSTALL_TYPE" | tr '[:lower:]' '[:upper:]') installation"
 }
 
@@ -460,7 +586,17 @@ execute_distribution_script() {
     export HONEY_BADGER_INSTALL_TYPE="$INSTALL_TYPE"
     
     # Execute the distribution-specific script
-    if bash "$full_script_path"; then
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_status "[dry-run] Executing distribution script in dry-run mode"
+        export HONEY_BADGER_DRY_RUN=1
+        if bash "$full_script_path"; then
+            print_success "Distribution-specific dry-run completed successfully!"
+            return 0
+        else
+            print_error "Distribution-specific dry-run encountered errors (see log)."
+            return 1
+        fi
+    elif bash "$full_script_path"; then
         print_success "Distribution-specific installation completed successfully!"
         return 0
     else
@@ -580,24 +716,52 @@ check_requirements() {
         "$MINIMAL") required_space=1048576 ;; # 1GB in KB
     esac
     
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_status "[dry-run] Would check disk space: need $(($required_space / 1024 / 1024))GB; available $(($available_space / 1024 / 1024))GB"
+    else
     if [[ $available_space -lt $required_space ]]; then
         print_warning "Low disk space detected!"
         print_warning "Available: $(($available_space / 1024 / 1024))GB, Required: $(($required_space / 1024 / 1024))GB"
-        read -p "Do you want to continue anyway? [y/N]: " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            exit 1
+        if [[ "$NONINTERACTIVE" == "true" ]]; then
+            if [[ "${HONEY_BADGER_AUTO_CONFIRM:-0}" == "1" ]]; then
+                REPLY="Y"
+                print_status "Non-interactive: auto-confirm enabled, continuing despite low disk space."
+            else
+                print_error "Non-interactive shell detected and no auto-confirm. Aborting."
+                print_colored "${WHITE}" "To run unattended set: HONEY_BADGER_AUTO_CONFIRM=1"
+                exit 1
+            fi
+        else
+            read -p "Do you want to continue anyway? [y/N]: " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                exit 1
+            fi
         fi
+    fi
     fi
     
     # Check internet connectivity
-    if ! ping -c 1 8.8.8.8 &> /dev/null; then
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_status "[dry-run] Would check internet connectivity (ping 8.8.8.8)"
+    elif ! ping -c 1 8.8.8.8 &> /dev/null; then
         print_warning "No internet connectivity detected!"
         print_warning "Internet access is required to download packages."
-        read -p "Do you want to continue anyway? [y/N]: " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            exit 1
+        if [[ "$NONINTERACTIVE" == "true" ]]; then
+            if [[ "${HONEY_BADGER_AUTO_CONFIRM:-0}" == "1" ]]; then
+                REPLY="Y"
+                print_status "Non-interactive: auto-confirm enabled, continuing despite no internet."
+            else
+                print_error "Non-interactive shell detected and no auto-confirm. Aborting."
+                print_colored "${WHITE}" "To run unattended set: HONEY_BADGER_AUTO_CONFIRM=1"
+                exit 1
+            fi
+        else
+            read -p "Do you want to continue anyway? [y/N]: " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                exit 1
+            fi
         fi
     fi
     
@@ -630,12 +794,25 @@ main() {
     # Show summary and get confirmation
     show_pre_install_summary
     
-    read -p "Do you want to continue with the installation? [y/N]: " -n 1 -r
-    echo
-    
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_colored "${RED}" "Installation cancelled by user."
-        exit 0
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_status "[dry-run] Would prompt to confirm installation; auto-continue in dry-run."
+    elif [[ "$NONINTERACTIVE" == "true" ]]; then
+        if [[ "${HONEY_BADGER_AUTO_CONFIRM:-0}" == "1" ]]; then
+            REPLY="Y"
+            print_status "Non-interactive: auto-confirm enabled, proceeding with installation."
+        else
+            print_error "Non-interactive shell detected. Aborting."
+            print_colored "${WHITE}" "To run unattended set: HONEY_BADGER_AUTO_CONFIRM=1"
+            exit 1
+        fi
+    else
+        read -p "Do you want to continue with the installation? [y/N]: " -n 1 -r
+        echo
+
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            print_colored "${RED}" "Installation cancelled by user."
+            exit 0
+        fi
     fi
     
     # Execute installation
@@ -647,14 +824,26 @@ main() {
         # Offer reboot for desktop installations
         if [[ "$INSTALL_TYPE" != "$MINIMAL" ]]; then
             echo
-            read -p "Would you like to reboot now to complete the installation? [y/N]: " -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                print_success "Rebooting in 5 seconds... 🦡"
-                sleep 5
-                sudo reboot
-            else
+            if [[ "$DRY_RUN" == "true" ]]; then
+                print_success "[dry-run] Would ask to reboot now — skipping in dry-run."
                 print_colored "${YELLOW}" "Please reboot manually to complete the desktop environment setup."
+            elif [[ "$NONINTERACTIVE" == "true" ]]; then
+                if [[ "${HONEY_BADGER_AUTO_CONFIRM:-0}" == "1" ]]; then
+                    print_success "Non-interactive: auto-confirm enabled — reboot suppressed in unattended mode."
+                    print_colored "${YELLOW}" "Please reboot manually to complete the desktop environment setup."
+                else
+                    print_colored "${YELLOW}" "Non-interactive session: skipping reboot prompt. Please reboot manually to complete the desktop environment setup."
+                fi
+            else
+                read -p "Would you like to reboot now to complete the installation? [y/N]: " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    print_success "Rebooting in 5 seconds... 🦡"
+                    sleep 5
+                    sudo reboot
+                else
+                    print_colored "${YELLOW}" "Please reboot manually to complete the desktop environment setup."
+                fi
             fi
         fi
         

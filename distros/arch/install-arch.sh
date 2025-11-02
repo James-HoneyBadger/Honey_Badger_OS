@@ -34,6 +34,20 @@ readonly DESKTOP="desktop"
 # Default installation type
 INSTALL_TYPE="${FULL}"
 
+# Non-interactive and unattended flags from environment
+if [[ ! -t 0 ]]; then
+    NONINTERACTIVE=true
+else
+    NONINTERACTIVE=false
+fi
+AUTO_CONFIRM="${HONEY_BADGER_AUTO_CONFIRM:-0}"
+DRY_RUN_ENV="${HONEY_BADGER_DRY_RUN:-0}"
+
+# Allow pre-setting installation type via environment
+if [[ -n "${HONEY_BADGER_INSTALL_TYPE:-}" ]]; then
+    INSTALL_TYPE="$(echo "$HONEY_BADGER_INSTALL_TYPE" | tr '[:upper:]' '[:lower:]')"
+fi
+
 # Logging
 readonly LOG_FILE="/tmp/honeybadger-install.log"
 exec 1> >(tee -a "${LOG_FILE}")
@@ -127,10 +141,21 @@ check_arch_linux() {
     
     if ! grep -qi "arch" /etc/os-release; then
         print_warning "This doesn't appear to be an Arch Linux system"
-        read -p "Do you want to continue anyway? [y/N]: " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            exit 1
+        if [[ "$DRY_RUN_ENV" == "1" ]]; then
+            print_status "[dry-run] Would prompt to continue; proceeding in dry-run."
+        elif [[ "$NONINTERACTIVE" == "true" ]]; then
+            if [[ "$AUTO_CONFIRM" == "1" ]]; then
+                print_status "Non-interactive auto-confirm enabled; continuing."
+            else
+                print_error "Non-interactive and not auto-confirmed. Aborting. Set HONEY_BADGER_AUTO_CONFIRM=1 to proceed."
+                exit 1
+            fi
+        else
+            read -p "Do you want to continue anyway? [y/N]: " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                exit 1
+            fi
         fi
     fi
 }
@@ -140,6 +165,10 @@ check_arch_linux() {
 #######################################
 update_system() {
     print_status "Updating system packages..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would run: sudo pacman -Sy; update keyring; sudo pacman -Syu"
+        return 0
+    fi
     
     sudo pacman -Sy --noconfirm
     
@@ -160,6 +189,10 @@ update_system() {
 #######################################
 install_essential_packages() {
     print_status "Installing essential packages..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would install essential packages via pacman"
+        return 0
+    fi
     
     local essential_packages=(
         # Base system utilities
@@ -225,6 +258,10 @@ install_aur_helper() {
     fi
     
     print_status "Installing yay AUR helper..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would clone and build yay from AUR"
+        return 0
+    fi
     
     local temp_dir="/tmp/yay-install"
     rm -rf "$temp_dir"
@@ -246,6 +283,10 @@ install_aur_helper() {
 #######################################
 install_development_tools() {
     print_status "Installing development tools..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would install development tools (official + AUR)"
+        return 0
+    fi
     
     local dev_packages=(
         # Programming languages
@@ -343,6 +384,10 @@ install_development_tools() {
 #######################################
 install_xfce_desktop() {
     print_status "Installing XFCE desktop environment..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would install XFCE desktop packages and enable lightdm"
+        return 0
+    fi
     
     local xfce_packages=(
         # Core XFCE
@@ -401,6 +446,10 @@ install_xfce_desktop() {
 #######################################
 install_productivity_apps() {
     print_status "Installing productivity applications..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would install productivity applications (official + AUR)"
+        return 0
+    fi
     
     local productivity_packages=(
         # Office suite
@@ -478,6 +527,10 @@ install_productivity_apps() {
 #######################################
 configure_nano() {
     print_status "Configuring nano editor..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would write ~/.nanorc, create backups dir, and set editor defaults"
+        return 0
+    fi
     
     # Create user nano configuration
     cat > "$HOME/.nanorc" << 'EOF'
@@ -560,6 +613,10 @@ EOF
 #######################################
 configure_honey_badger_theme() {
     print_status "Installing Honey Badger theme..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would create theme directories and write GTK settings"
+        return 0
+    fi
     
     # Create theme directories
     mkdir -p "$HOME/.themes/HoneyBadger"
@@ -758,6 +815,10 @@ configure_xfce() {
     fi
     
     print_status "Configuring XFCE desktop..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would configure xfconf settings and wallpaper"
+        return 0
+    fi
     
     # Wait for XFCE to be available
     sleep 2
@@ -787,6 +848,10 @@ configure_xfce() {
 #######################################
 enable_services() {
     print_status "Enabling essential services..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would enable NetworkManager, bluetooth, docker; add user to docker group"
+        return 0
+    fi
     
     local services=(
         "NetworkManager"
@@ -813,6 +878,10 @@ enable_services() {
 #######################################
 create_utility_scripts() {
     print_status "Creating Honey Badger utility scripts..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would create honey-badger-info and honey-badger-update scripts in ~/.local/bin"
+        return 0
+    fi
     
     mkdir -p "$HOME/.local/bin"
     
@@ -1006,6 +1075,33 @@ show_summary() {
 # Installation type selection
 #######################################
 select_install_type() {
+    # Non-interactive selection via env
+    case "$INSTALL_TYPE" in
+        "$FULL"|"$DEVELOPER"|"$MINIMAL"|"$DESKTOP")
+            if [[ -n "${HONEY_BADGER_INSTALL_TYPE:-}" ]]; then
+                print_success "Selected (pre-set): $(echo "$INSTALL_TYPE" | tr '[:lower:]' '[:upper:]') installation"
+                return
+            fi
+            ;;
+        *) : ;;
+    esac
+
+    if [[ "$NONINTERACTIVE" == "true" ]]; then
+        if [[ "$AUTO_CONFIRM" == "1" ]]; then
+            INSTALL_TYPE="${INSTALL_TYPE:-$FULL}"
+            case "$INSTALL_TYPE" in
+                "$FULL"|"$DEVELOPER"|"$MINIMAL"|"$DESKTOP") : ;;
+                *) INSTALL_TYPE="$FULL" ;;
+            esac
+            print_status "Non-interactive: selected $(echo "$INSTALL_TYPE" | tr '[:lower:]' '[:upper:]') installation"
+            return
+        else
+            print_error "Non-interactive session without auto-confirm; cannot show selection menu."
+            print_colored "${WHITE}" "Set HONEY_BADGER_AUTO_CONFIRM=1 and optionally HONEY_BADGER_INSTALL_TYPE."
+            exit 1
+        fi
+    fi
+
     print_colored "${YELLOW}" "🛠️  Select Installation Type:"
     echo
     print_colored "${WHITE}" "1) Full Installation (Recommended)"
@@ -1064,12 +1160,22 @@ main() {
     echo
     print_colored "${YELLOW}" "⚠️  Ready to install Honey Badger OS (${INSTALL_TYPE} installation)"
     print_colored "${YELLOW}" "   This will modify your system and install packages."
-    read -p "Do you want to continue? [y/N]: " -n 1 -r
-    echo
-    
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_colored "${RED}" "Installation cancelled."
-        exit 0
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would prompt to continue; auto-continue in dry-run."
+    elif [[ "$NONINTERACTIVE" == "true" ]]; then
+        if [[ "$AUTO_CONFIRM" == "1" ]]; then
+            print_status "Non-interactive: auto-confirm enabled, proceeding."
+        else
+            print_error "Non-interactive and not auto-confirmed. Aborting. Set HONEY_BADGER_AUTO_CONFIRM=1 to proceed."
+            exit 1
+        fi
+    else
+        read -p "Do you want to continue? [y/N]: " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            print_colored "${RED}" "Installation cancelled."
+            exit 0
+        fi
     fi
     
     # Start installation
@@ -1089,12 +1195,22 @@ main() {
     # Final reboot prompt for desktop installations
     if [[ "$INSTALL_TYPE" != "$MINIMAL" ]]; then
         echo
-        read -p "Would you like to reboot now to start using your new desktop? [y/N]: " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            print_success "Rebooting in 5 seconds... 🦡"
-            sleep 5
-            sudo reboot
+        if [[ "$DRY_RUN_ENV" == "1" ]]; then
+            print_status "[dry-run] Would ask to reboot; skipping in dry-run. Please reboot manually later."
+        elif [[ "$NONINTERACTIVE" == "true" ]]; then
+            if [[ "$AUTO_CONFIRM" == "1" ]]; then
+                print_success "Non-interactive unattended: reboot suppressed. Please reboot manually."
+            else
+                print_colored "${YELLOW}" "Non-interactive session: skipping reboot prompt. Please reboot manually."
+            fi
+        else
+            read -p "Would you like to reboot now to start using your new desktop? [y/N]: " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                print_success "Rebooting in 5 seconds... 🦡"
+                sleep 5
+                sudo reboot
+            fi
         fi
     fi
 }

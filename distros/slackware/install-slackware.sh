@@ -34,6 +34,20 @@ readonly DESKTOP="desktop"
 # Default installation type
 INSTALL_TYPE="${FULL}"
 
+# Non-interactive and unattended flags from environment
+if [[ ! -t 0 ]]; then
+    NONINTERACTIVE=true
+else
+    NONINTERACTIVE=false
+fi
+AUTO_CONFIRM="${HONEY_BADGER_AUTO_CONFIRM:-0}"
+DRY_RUN_ENV="${HONEY_BADGER_DRY_RUN:-0}"
+
+# Allow pre-setting installation type via environment
+if [[ -n "${HONEY_BADGER_INSTALL_TYPE:-}" ]]; then
+    INSTALL_TYPE="$(echo "$HONEY_BADGER_INSTALL_TYPE" | tr '[:upper:]' '[:lower:]')"
+fi
+
 # Slackware version detection
 SLACK_VERSION=$(grep VERSION /etc/slackware-version 2>/dev/null | cut -d' ' -f2 || echo "15.0")
 
@@ -124,12 +138,26 @@ check_root() {
 #######################################
 check_slackware() {
     if [[ ! -f /etc/slackware-version ]]; then
-        print_error "This script is designed for Slackware systems"
-        print_error "/etc/slackware-version not found"
-        exit 1
+        print_warning "This doesn't appear to be a Slackware system (/etc/slackware-version not found)"
+        if [[ "$DRY_RUN_ENV" == "1" ]]; then
+            print_status "[dry-run] Would prompt to continue; proceeding in dry-run."
+        elif [[ "$NONINTERACTIVE" == "true" ]]; then
+            if [[ "$AUTO_CONFIRM" == "1" ]]; then
+                print_status "Non-interactive auto-confirm enabled; continuing."
+            else
+                print_error "Non-interactive and not auto-confirmed. Aborting. Set HONEY_BADGER_AUTO_CONFIRM=1 to proceed."
+                exit 1
+            fi
+        else
+            read -p "Do you want to continue anyway? [y/N]: " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                exit 1
+            fi
+        fi
+    else
+        print_status "Detected Slackware $(cat /etc/slackware-version)"
     fi
-    
-    print_status "Detected Slackware $(cat /etc/slackware-version)"
 }
 
 #######################################
@@ -137,6 +165,10 @@ check_slackware() {
 #######################################
 setup_slackbuilds() {
     print_status "Setting up SlackBuilds.org repository..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would install sbopkg and sync SlackBuilds repository"
+        return 0
+    fi
     
     # Install sbopkg if not present
     if ! command -v sbopkg &> /dev/null; then
@@ -160,6 +192,10 @@ setup_slackbuilds() {
 #######################################
 update_system() {
     print_status "Updating system packages..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would run: slackpkg update && slackpkg upgrade-all"
+        return 0
+    fi
     
     # Update package database if slackpkg is configured
     if command -v slackpkg &> /dev/null && [[ -f /etc/slackpkg/mirrors ]]; then
@@ -178,6 +214,10 @@ update_system() {
 #######################################
 install_essential_packages() {
     print_status "Installing essential packages..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would check/install essential packages via slackpkg"
+        return 0
+    fi
     
     local essential_packages=(
         # Development tools (usually included in Slackware full install)
@@ -213,6 +253,11 @@ install_essential_packages() {
 #######################################
 install_development_tools() {
     print_status "Installing development tools..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would attempt to install development tools via sbopkg/SlackBuilds"
+        print_status "[dry-run] Would also call install_manual_dev_tools for languages"
+        return 0
+    fi
     
     # Programming languages and tools available via SlackBuilds
     local slackbuild_packages=(
@@ -249,6 +294,10 @@ install_development_tools() {
 #######################################
 install_manual_dev_tools() {
     print_status "Installing additional development tools manually..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would download and install Go, Rust, Node.js where missing"
+        return 0
+    fi
     
     # Install Go if not available
     if ! command -v go &> /dev/null; then
@@ -285,6 +334,10 @@ install_manual_dev_tools() {
 #######################################
 install_xfce_desktop() {
     print_status "Configuring XFCE desktop environment..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would check/install XFCE via slackpkg and write ~/.xinitrc"
+        return 0
+    fi
     
     # XFCE is usually included in Slackware full install
     # Check if XFCE packages are installed
@@ -336,6 +389,10 @@ install_xfce_desktop() {
 #######################################
 configure_nano() {
     print_status "Configuring nano editor..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would write ~/.nanorc, backups dir, and set editor defaults"
+        return 0
+    fi
     
     # Create user nano configuration
     cat > "$HOME/.nanorc" << 'EOF'
@@ -420,6 +477,10 @@ EOF
 #######################################
 configure_honey_badger_theme() {
     print_status "Installing Honey Badger theme..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would create theme directories and GTK settings"
+        return 0
+    fi
     
     # Create theme directories
     mkdir -p "$HOME/.themes/HoneyBadger/gtk-3.0"
@@ -618,6 +679,10 @@ configure_xfce() {
     fi
     
     print_status "Configuring XFCE desktop..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would create XFCE per-channel XML config with Honey Badger theme"
+        return 0
+    fi
     
     # XFCE configuration for Slackware
     # Note: These commands may need X11 running to work properly
@@ -659,6 +724,10 @@ EOF
 #######################################
 enable_services() {
     print_status "Configuring essential services..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would enable rc.networkmanager, rc.docker, and add user to docker group if present"
+        return 0
+    fi
     
     # Slackware uses traditional init system
     # Configure services via /etc/rc.d/ scripts
@@ -684,6 +753,10 @@ enable_services() {
 #######################################
 create_utility_scripts() {
     print_status "Creating Honey Badger utility scripts..."
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would create honey-badger-* utilities and update PATH in profiles"
+        return 0
+    fi
     
     mkdir -p "$HOME/.local/bin"
     
@@ -856,7 +929,7 @@ show_summary() {
     
     echo
     print_colored "${YELLOW}" "Installation Type: $(echo "$INSTALL_TYPE" | tr '[:lower:]' '[:upper:]')"
-    print_colored "${YELLOW}" "Slackware Version: $(cat /etc/slackware-version)"
+    print_colored "${YELLOW}" "Slackware Version: ${SLACK_VERSION}"
     
     case "$INSTALL_TYPE" in
         "$FULL")
@@ -924,6 +997,33 @@ show_summary() {
 # Installation type selection
 #######################################
 select_install_type() {
+    # Non-interactive selection via env
+    case "$INSTALL_TYPE" in
+        "$FULL"|"$DEVELOPER"|"$MINIMAL"|"$DESKTOP")
+            if [[ -n "${HONEY_BADGER_INSTALL_TYPE:-}" ]]; then
+                print_success "Selected (pre-set): $(echo "$INSTALL_TYPE" | tr '[:lower:]' '[:upper:]') installation"
+                return
+            fi
+            ;;
+        *) : ;;
+    esac
+
+    if [[ "$NONINTERACTIVE" == "true" ]]; then
+        if [[ "$AUTO_CONFIRM" == "1" ]]; then
+            INSTALL_TYPE="${INSTALL_TYPE:-$FULL}"
+            case "$INSTALL_TYPE" in
+                "$FULL"|"$DEVELOPER"|"$MINIMAL"|"$DESKTOP") : ;;
+                *) INSTALL_TYPE="$FULL" ;;
+            esac
+            print_status "Non-interactive: selected $(echo "$INSTALL_TYPE" | tr '[:lower:]' '[:upper:]') installation"
+            return
+        else
+            print_error "Non-interactive session without auto-confirm; cannot show selection menu."
+            print_colored "${WHITE}" "Set HONEY_BADGER_AUTO_CONFIRM=1 and optionally HONEY_BADGER_INSTALL_TYPE."
+            exit 1
+        fi
+    fi
+
     print_colored "${YELLOW}" "🛠️  Select Installation Type:"
     echo
     print_colored "${WHITE}" "1) Full Installation (Recommended)"
@@ -982,12 +1082,22 @@ main() {
     print_colored "${YELLOW}" "⚠️  Ready to install Honey Badger OS (${INSTALL_TYPE} installation)"
     print_colored "${YELLOW}" "   This will modify your Slackware system configuration."
     print_colored "${YELLOW}" "   Some operations may require root privileges."
-    read -p "Do you want to continue? [y/N]: " -n 1 -r
-    echo
-    
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_colored "${RED}" "Installation cancelled."
-        exit 0
+    if [[ "$DRY_RUN_ENV" == "1" ]]; then
+        print_status "[dry-run] Would prompt to continue; auto-continue in dry-run."
+    elif [[ "$NONINTERACTIVE" == "true" ]]; then
+        if [[ "$AUTO_CONFIRM" == "1" ]]; then
+            print_status "Non-interactive: auto-confirm enabled, proceeding."
+        else
+            print_error "Non-interactive and not auto-confirmed. Aborting. Set HONEY_BADGER_AUTO_CONFIRM=1 to proceed."
+            exit 1
+        fi
+    else
+        read -p "Do you want to continue? [y/N]: " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            print_colored "${RED}" "Installation cancelled."
+            exit 0
+        fi
     fi
     
     # Start installation
@@ -1007,11 +1117,21 @@ main() {
     # Final reboot/startx prompt for desktop installations
     if [[ "$INSTALL_TYPE" != "$MINIMAL" ]]; then
         echo
-        read -p "Would you like to start the desktop environment now? [y/N]: " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            print_success "Starting desktop environment... 🦡"
-            startx
+        if [[ "$DRY_RUN_ENV" == "1" ]]; then
+            print_status "[dry-run] Would prompt to start desktop (startx); skipping in dry-run."
+        elif [[ "$NONINTERACTIVE" == "true" ]]; then
+            if [[ "$AUTO_CONFIRM" == "1" ]]; then
+                print_colored "${YELLOW}" "Non-interactive unattended: not starting X automatically. Please run 'startx' manually."
+            else
+                print_colored "${YELLOW}" "Non-interactive session: skipping desktop start prompt."
+            fi
+        else
+            read -p "Would you like to start the desktop environment now? [y/N]: " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                print_success "Starting desktop environment... 🦡"
+                startx
+            fi
         fi
     fi
 }

@@ -1,3 +1,30 @@
+## Unattended installation and dry-run
+
+You can run the installer without interactive prompts and safely preview actions:
+
+- Unattended run (auto-confirm all prompts):
+
+   ```bash
+   ./install.sh --unattended --type desktop
+   ```
+
+- Using environment variables (for CI or scripts):
+
+   ```bash
+   HONEY_BADGER_AUTO_CONFIRM=1 HONEY_BADGER_INSTALL_TYPE=minimal ./install.sh < /dev/null
+   ```
+
+- Dry-run (no changes, just prints what would happen):
+
+   ```bash
+   ./install.sh --dry-run --unattended --type developer
+   ```
+
+Tips:
+- Valid installation types: full, developer, minimal, desktop
+- In unattended mode, reboots are suppressed. Reboot manually after completion if a desktop was installed.
+- If non-interactive and auto-confirm is not set, the script exits to avoid hanging on prompts.
+
 # 🦡 Honey Badger OS - Complete User Guide# Honey Badger OS - Complete User Guide
 
 **Transform any Linux distribution into a fearless development powerhouse!**Welcome to **Honey Badger OS** - a custom Linux distribution built from scratch with complete honey badger theming, multi-architecture support, and professional-grade features.
