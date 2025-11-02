@@ -705,8 +705,8 @@ configure_honey_badger_theme() {
         return 0
     fi
     
-    # Create theme directories
-    mkdir -p "$HOME/.themes/HoneyBadger"
+    # Create theme directories (ensure gtk-3.0 directory exists)
+    mkdir -p "$HOME/.themes/HoneyBadger/gtk-3.0"
     mkdir -p "$HOME/.local/share/honey-badger"
     mkdir -p "$HOME/.config/gtk-3.0"
     mkdir -p "$HOME/.config/xfce4"
