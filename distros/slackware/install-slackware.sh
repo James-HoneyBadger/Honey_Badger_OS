@@ -17,6 +17,7 @@ readonly LOG_FILE="/tmp/honeybadger-slackware-install.log"
 log_info() { echo -e "${CYAN}[INFO]${NC} $1" | tee -a "$LOG_FILE"; }
 log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1" | tee -a "$LOG_FILE"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1" | tee -a "$LOG_FILE"; }
+log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1" | tee -a "$LOG_FILE"; }
 log_step() { echo -e "${BLUE}[STEP]${NC} $1" | tee -a "$LOG_FILE"; }
 
 show_banner() {
@@ -50,7 +51,14 @@ main() {
     
     log_step "Setting up nano configuration..."
     mkdir -p ~/.nano/backups
-    cp /Users/daddy/Honey_Badger_OS/config/nanorc ~/.nanorc
+    
+    # Find script directory and copy config
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+    if [[ -f "$script_dir/config/nanorc" ]]; then
+        cp "$script_dir/config/nanorc" ~/.nanorc
+    else
+        log_warning "nanorc configuration file not found"
+    fi
     echo 'export EDITOR=nano' >> ~/.bashrc
     
     log_success "Honey Badger OS installation completed!"
