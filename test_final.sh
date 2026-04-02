@@ -38,6 +38,7 @@ test_syntax_all() {
         assets/honey-badger-install
         completions/honey-badger.bash
         completions/honey-badger.zsh
+        uninstall.sh
     )
     for script in "${scripts[@]}"; do
         log_test "bash -n $script"
@@ -90,6 +91,9 @@ test_source_common() {
         declare -f hb_rollback_init >/dev/null 2>&1 || exit 1
         declare -f hb_load_checkpoint >/dev/null 2>&1 || exit 1
         declare -f hb_clear_checkpoint >/dev/null 2>&1 || exit 1
+        declare -f hb_show_banner >/dev/null 2>&1 || exit 1
+        declare -f hb_init_distro_log >/dev/null 2>&1 || exit 1
+        declare -f hb_enable_service >/dev/null 2>&1 || exit 1
     ) 2>/dev/null; then
         log_pass "lib/common.sh sources cleanly and all key functions exist"
     else
@@ -368,6 +372,89 @@ test_install_help() {
     fi
 }
 
+# ── Test 15: hb_show_banner ────────────────────────────────────────────────
+test_show_banner() {
+    echo -e "\n=== UNIFIED BANNER ==="
+    log_test "hb_show_banner prints distro name"
+    local output
+    output=$(bash -c '
+        export HONEY_BADGER_ROOT="'"$SCRIPT_DIR"'"
+        export HONEY_BADGER_DRY_RUN=1
+        source "'"$SCRIPT_DIR"'/lib/common.sh"
+        hb_show_banner "TestDistro" "testing subtitle"
+    ' 2>/dev/null)
+    if echo "$output" | grep -qi "TestDistro"; then
+        log_pass "hb_show_banner displays distro name"
+    else
+        log_fail "hb_show_banner did not display distro name"
+    fi
+}
+
+# ── Test 16: hb_init_distro_log ────────────────────────────────────────────
+test_init_distro_log() {
+    echo -e "\n=== DISTRO LOG INIT ==="
+    log_test "hb_init_distro_log creates log file"
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    local result
+    result=$(bash -c '
+        export HONEY_BADGER_ROOT="'"$SCRIPT_DIR"'"
+        export HONEY_BADGER_DRY_RUN=1
+        export _HB_LOG_DIR="'"$tmp_dir"'"
+        source "'"$SCRIPT_DIR"'/lib/common.sh"
+        hb_init_distro_log "testdistro"
+        echo "LOG=$LOG_FILE"
+    ' 2>/dev/null)
+    if echo "$result" | grep -q "LOG=.*testdistro"; then
+        log_pass "hb_init_distro_log sets LOG_FILE with distro name"
+    else
+        log_fail "hb_init_distro_log did not set LOG_FILE correctly"
+    fi
+    rm -rf "$tmp_dir"
+}
+
+# ── Test 17: config validation rejects command substitution ────────────────
+test_config_validation() {
+    echo -e "\n=== CONFIG VALIDATION ==="
+    log_test "Config validation rejects command substitution"
+    local tmp_conf
+    tmp_conf=$(mktemp /tmp/hb-test-conf.XXXXXX)
+    echo 'HONEY_BADGER_VERSION="$(whoami)"' > "$tmp_conf"
+    local result
+    result=$(bash -c '
+        export HONEY_BADGER_ROOT="'"$SCRIPT_DIR"'"
+        export HONEY_BADGER_DRY_RUN=1
+        source "'"$SCRIPT_DIR"'/lib/common.sh"
+        if _hb_validate_config "'"$tmp_conf"'"; then
+            echo "accepted"
+        else
+            echo "rejected"
+        fi
+    ' 2>&1)
+    rm -f "$tmp_conf"
+    if echo "$result" | grep -qi "command substitution\|rejected"; then
+        log_pass "Config validation rejects command substitution"
+    else
+        log_fail "Config validation did not reject command substitution"
+    fi
+}
+
+# ── Test 18: --skip-theme flag ─────────────────────────────────────────────
+test_skip_theme_flag() {
+    echo -e "\n=== SKIP THEME FLAG ==="
+    log_test "install.sh accepts --skip-theme flag"
+    local output
+    if output=$(bash "$SCRIPT_DIR/install.sh" --help 2>&1); then
+        if echo "$output" | grep -q "skip-theme"; then
+            log_pass "install.sh --help mentions --skip-theme"
+        else
+            log_fail "install.sh --help missing --skip-theme"
+        fi
+    else
+        log_fail "install.sh --help failed"
+    fi
+}
+
 # ── Main ───────────────────────────────────────────────────────────────────
 run_final_tests() {
     echo "🦡 Honey Badger OS - Final Smoke Tests"
@@ -387,6 +474,10 @@ run_final_tests() {
     test_no_color
     test_checkpoint
     test_install_help
+    test_show_banner
+    test_init_distro_log
+    test_config_validation
+    test_skip_theme_flag
 
     local TOTAL_TESTS=$((PASSED_TESTS + FAILED_TESTS))
     echo -e "\n======================================="

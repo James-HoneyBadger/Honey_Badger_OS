@@ -50,10 +50,57 @@ if [[ -z "${HONEY_BADGER_ROOT:-}" ]]; then
     HONEY_BADGER_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fi
 
-# ── Source config file ───────────────────────────────────────────────────────
+# ── Source config file (with key validation) ────────────────────────────────
+_HB_VALID_CONFIG_KEYS=(
+    HONEY_BADGER_VERSION HONEY_BADGER_CODENAME HONEY_BADGER_BUILD_DATE
+    HONEY_BADGER_THEME_PRIMARY HONEY_BADGER_THEME_SECONDARY
+    HONEY_BADGER_THEME_ACCENT HONEY_BADGER_THEME_BASE
+    EDITOR VISUAL
+    HONEY_BADGER_DEV_MODE
+    HONEY_BADGER_SKIP_DOCKER HONEY_BADGER_SKIP_PYTHON
+    HONEY_BADGER_SKIP_NODE HONEY_BADGER_SKIP_NANO HONEY_BADGER_SKIP_THEME
+    HONEY_BADGER_GIT_USERNAME HONEY_BADGER_GIT_EMAIL
+    HONEY_BADGER_LOG_COUNT HONEY_BADGER_NETWORK_TIMEOUT
+    HONEY_BADGER_MIN_DISK_GB HONEY_BADGER_WALLPAPER_SIZE
+    HONEY_BADGER_NPM_GLOBAL_PATH
+)
+
+_hb_validate_config() {
+    local config_file="$1"
+    while IFS= read -r line; do
+        # Skip comments and blank lines
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "${line// /}" ]] && continue
+        # Extract variable name
+        local var_name="${line%%=*}"
+        var_name="${var_name// /}"
+        # Reject lines with command substitution or subshells
+        if [[ "$line" =~ \$\( ]] || [[ "$line" =~ \` ]]; then
+            echo "SECURITY: Rejecting config line with command substitution: $line" >&2
+            return 1
+        fi
+        # Check against whitelist
+        local valid=false
+        for key in "${_HB_VALID_CONFIG_KEYS[@]}"; do
+            if [[ "$var_name" == "$key" ]]; then
+                valid=true
+                break
+            fi
+        done
+        if ! $valid; then
+            echo "WARNING: Unknown config key '$var_name' in $config_file (ignored)" >&2
+        fi
+    done < "$config_file"
+    return 0
+}
+
 if [[ -f "$HONEY_BADGER_ROOT/config/honey-badger-os.conf" ]]; then
-    # shellcheck source=../config/honey-badger-os.conf
-    source "$HONEY_BADGER_ROOT/config/honey-badger-os.conf"
+    if _hb_validate_config "$HONEY_BADGER_ROOT/config/honey-badger-os.conf"; then
+        # shellcheck source=../config/honey-badger-os.conf
+        source "$HONEY_BADGER_ROOT/config/honey-badger-os.conf"
+    else
+        echo "ERROR: Config file failed validation, using defaults" >&2
+    fi
 fi
 
 # ── Verbosity control ───────────────────────────────────────────────────────
@@ -70,21 +117,26 @@ if [[ "${HONEY_BADGER_DEV_MODE:-false}" == "true" ]]; then
 fi
 
 # ── Logging setup ────────────────────────────────────────────────────────────
-# Persistent log directory with rotation (keeps last 5 runs)
+# Persistent log directory with rotation
 _HB_LOG_DIR="${HOME}/.local/share/honey-badger/logs"
 mkdir -p "$_HB_LOG_DIR" 2>/dev/null || _HB_LOG_DIR="/tmp"
 
-# Rotate logs: keep last 5
+# Configurable log rotation count (default 5)
+_HB_LOG_KEEP="${HONEY_BADGER_LOG_COUNT:-5}"
+
+# Rotate logs: keep last N runs
 _hb_rotate_logs() {
     local log_dir="$1"
+    local keep="${_HB_LOG_KEEP}"
     local -a old_logs=()
     # Collect log files sorted oldest-first
     while IFS= read -r -d '' f; do
         old_logs+=("$f")
     done < <(find "$log_dir" -maxdepth 1 -name 'honeybadger-*.log' -type f -print0 2>/dev/null | sort -z)
     local count=${#old_logs[@]}
-    if [[ $count -gt 4 ]]; then
-        local to_remove=$((count - 4))
+    local max_keep=$((keep - 1))
+    if [[ $count -gt $max_keep ]]; then
+        local to_remove=$((count - max_keep))
         for ((i = 0; i < to_remove; i++)); do
             rm -f "${old_logs[$i]}"
         done
@@ -201,13 +253,15 @@ _hb_cleanup() {
     if [[ $exit_code -ne 0 && $_HB_STEP_CURRENT -gt 0 ]]; then
         _hb_save_checkpoint
         log_warning "Installation interrupted at step ${_HB_STEP_CURRENT}/${_HB_STEP_TOTAL}"
+        log_info "Last completed step: ${_HB_STEP_CURRENT}"
         log_info "Re-run the installer to resume from the last checkpoint."
+        log_info "Installation log: ${LOG_FILE}"
     fi
     exit "$exit_code"
 }
 
 trap '_hb_cleanup' EXIT
-trap 'log_error "Installation interrupted by signal"; exit 130' INT TERM
+trap 'log_error "Installation interrupted by user (Ctrl+C)"; log_info "Log file: ${LOG_FILE}"; exit 130' INT TERM
 
 # ── Config backup ────────────────────────────────────────────────────────────
 # Back up a file before overwriting. Creates <file>.hb-backup if no backup exists yet.
@@ -279,7 +333,8 @@ hb_rollback_add_group() {
 
 # ── Network connectivity check ──────────────────────────────────────────────
 hb_check_network() {
-    log_debug "Checking network connectivity..."
+    local timeout="${HONEY_BADGER_NETWORK_TIMEOUT:-3}"
+    log_debug "Checking network connectivity (timeout: ${timeout}s)..."
     # Try DNS resolution first (works behind firewalls that block ICMP)
     if command -v getent >/dev/null 2>&1; then
         if getent hosts dns.google >/dev/null 2>&1; then
@@ -289,24 +344,82 @@ hb_check_network() {
     fi
     # Fall back to host
     if command -v host >/dev/null 2>&1; then
-        if host -W 3 dns.google >/dev/null 2>&1; then
+        if host -W "$timeout" dns.google >/dev/null 2>&1; then
             log_debug "Network OK (host lookup)"
             return 0
         fi
     fi
     # Fall back to ping
-    if ping -c 1 -W 3 8.8.8.8 >/dev/null 2>&1; then
+    if ping -c 1 -W "$timeout" 8.8.8.8 >/dev/null 2>&1; then
         log_debug "Network OK (ping)"
         return 0
     fi
     # Last resort: try to reach a repo directly
-    if curl -fsSL --connect-timeout 5 --max-time 10 https://google.com -o /dev/null 2>/dev/null; then
+    if curl -fsSL --connect-timeout "$timeout" --max-time 10 https://google.com -o /dev/null 2>/dev/null; then
         log_debug "Network OK (curl)"
         return 0
     fi
     log_error "No network connectivity detected"
     log_info "Please check your network connection and try again"
     return 1
+}
+
+# ── Unified banner display ──────────────────────────────────────────────────
+hb_show_banner() {
+    local distro_name="${1:-}"
+    local subtitle="${2:-Fearless Linux Configuration}"
+    echo -e "${BOLD}${YELLOW}"
+    echo "╔════════════════════════════════════════════════════════════╗"
+    echo "║           🦡  HONEY BADGER OS INSTALLER  🦡              ║"
+    if [[ -n "$distro_name" ]]; then
+        printf "║           %-42s ║\n" "$distro_name Edition"
+    fi
+    printf "║           %-42s ║\n" "$subtitle"
+    echo "║           Version: ${HONEY_BADGER_VERSION:-2.0.0}                              ║"
+    echo "╚════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
+}
+
+# ── Unified distro log initialization ───────────────────────────────────────
+hb_init_distro_log() {
+    local distro_name="${1:-unknown}"
+    LOG_FILE="${_HB_LOG_DIR}/honeybadger-${distro_name}-$(date +%Y%m%d-%H%M%S).log"
+    touch "$LOG_FILE" 2>/dev/null || LOG_FILE="/tmp/honeybadger-${distro_name}-install.log"
+    log_debug "Distro log initialized: $LOG_FILE"
+}
+
+# ── Unified service enablement (cross-init-system) ─────────────────────────
+hb_enable_service() {
+    local service_name="$1"
+    if [[ "$HONEY_BADGER_DRY_RUN" == "1" ]]; then
+        log_info "[DRY-RUN] Would enable service: $service_name"
+        return 0
+    fi
+    # systemd
+    if command -v systemctl >/dev/null 2>&1; then
+        hb_sudo systemctl enable "$service_name" 2>/dev/null || true
+        log_debug "Enabled $service_name via systemd"
+        return 0
+    fi
+    # OpenRC
+    if command -v rc-update >/dev/null 2>&1; then
+        hb_sudo rc-update add "$service_name" default 2>/dev/null || true
+        log_debug "Enabled $service_name via OpenRC"
+        return 0
+    fi
+    # runit
+    if [[ -d /etc/sv/"$service_name" ]]; then
+        hb_sudo ln -sf "/etc/sv/$service_name" /var/service/ 2>/dev/null || true
+        log_debug "Enabled $service_name via runit"
+        return 0
+    fi
+    # SysV init
+    if command -v update-rc.d >/dev/null 2>&1; then
+        hb_sudo update-rc.d "$service_name" defaults 2>/dev/null || true
+        log_debug "Enabled $service_name via SysV init"
+        return 0
+    fi
+    log_warning "No supported init system found for enabling $service_name"
 }
 
 # ── Component skip flags ────────────────────────────────────────────────────
@@ -540,23 +653,29 @@ install_assets() {
     hb_next_step "Installing Honey Badger assets..."
 
     local wallpaper_dir="/usr/share/backgrounds"
+    local wallpaper_size="${HONEY_BADGER_WALLPAPER_SIZE:-1920x1080}"
     hb_sudo mkdir -p "$wallpaper_dir"
     mkdir -p "$HOME/.local/share/icons"
 
     # Generate wallpaper safely (no eval)
     if command -v convert >/dev/null 2>&1; then
-        convert -size 1920x1080 "gradient:#2d2006-#8b6914" \
+        local tmp_wallpaper
+        tmp_wallpaper="$(mktemp /tmp/honeybadger-wallpaper.XXXXXX.jpg)"
+        hb_register_temp "$tmp_wallpaper"
+        if convert -size "$wallpaper_size" "gradient:#2d2006-#8b6914" \
             -font DejaVu-Sans-Bold -pointsize 72 -fill "#f5deb3" \
             -gravity center -annotate +0-100 "HONEY BADGER OS" \
             -pointsize 24 -annotate +0+50 "Fearless - Determined - Uncompromising" \
-            /usr/share/backgrounds/honeybadger.jpg 2>/dev/null || {
-                log_warning "ImageMagick wallpaper generation failed, creating placeholder"
-                hb_sudo touch "$wallpaper_dir/honeybadger.jpg"
-            }
-        log_success "Generated Honey Badger wallpaper"
+            "$tmp_wallpaper" 2>/dev/null && [[ -s "$tmp_wallpaper" ]]; then
+            hb_sudo cp "$tmp_wallpaper" "$wallpaper_dir/honeybadger.jpg"
+            log_success "Generated Honey Badger wallpaper (${wallpaper_size})"
+        else
+            log_warning "ImageMagick wallpaper generation failed or produced empty file"
+            log_info "You can set a wallpaper manually at $wallpaper_dir/honeybadger.jpg"
+        fi
     else
-        log_info "ImageMagick not available, creating placeholder wallpaper"
-        hb_sudo touch "$wallpaper_dir/honeybadger.jpg"
+        log_info "ImageMagick not available, skipping wallpaper generation"
+        log_info "Install ImageMagick and re-run, or set a wallpaper manually"
     fi
 
     log_success "Assets installed"
@@ -667,9 +786,10 @@ setup_node_dev() {
         return 0
     fi
 
-    mkdir -p ~/.npm-global
-    npm config set prefix '~/.npm-global'
-    ensure_bashrc_line 'export PATH=~/.npm-global/bin:$PATH'
+    local npm_global="${HONEY_BADGER_NPM_GLOBAL_PATH:-$HOME/.npm-global}"
+    mkdir -p "$npm_global"
+    npm config set prefix "$npm_global"
+    ensure_bashrc_line "export PATH=${npm_global}/bin:\$PATH"
 
     npm install -g typescript ts-node nodemon eslint prettier 2>/dev/null || true
     log_success "Node.js development environment configured"
@@ -814,6 +934,8 @@ show_post_install() {
     echo "  • honey-badger-info    - Display system information" | tee -a "$LOG_FILE"
     echo "  • honey-badger-update  - Update system and packages" | tee -a "$LOG_FILE"
     echo "  • honey-badger-install - Install additional packages" | tee -a "$LOG_FILE"
+    echo "" | tee -a "$LOG_FILE"
+    echo -e "${CYAN}Installation log:${NC} $LOG_FILE" | tee -a "$LOG_FILE"
 
     # Write JSON summary if available
     hb_json_write

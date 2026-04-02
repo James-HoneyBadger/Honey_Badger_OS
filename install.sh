@@ -22,6 +22,7 @@ Options:
   --skip-python       Skip Python development environment setup
   --skip-node         Skip Node.js development environment setup
   --skip-nano         Skip nano editor configuration
+  --skip-theme        Skip theme and wallpaper installation
 
 Environment variables:
   HONEY_BADGER_INSTALL_TYPE   Set install type: full, developer, desktop, minimal
@@ -34,6 +35,11 @@ Environment variables:
   HONEY_BADGER_SKIP_PYTHON=1  Same as --skip-python
   HONEY_BADGER_SKIP_NODE=1    Same as --skip-node
   HONEY_BADGER_SKIP_NANO=1    Same as --skip-nano
+  HONEY_BADGER_SKIP_THEME=1   Same as --skip-theme
+  HONEY_BADGER_LOG_COUNT=N    Number of log files to keep (default: 5)
+  HONEY_BADGER_NETWORK_TIMEOUT=N  Network check timeout in seconds (default: 3)
+  HONEY_BADGER_WALLPAPER_SIZE=WxH  Wallpaper resolution (default: 1920x1080)
+  HONEY_BADGER_NPM_GLOBAL_PATH=PATH  npm global prefix (default: ~/.npm-global)
 
 Supported distributions:
   Arch Linux    (Arch, Manjaro, EndeavourOS, ArcoLinux, Artix)
@@ -68,6 +74,7 @@ for arg in "$@"; do
         --skip-python)       export HONEY_BADGER_SKIP_PYTHON=1 ;;
         --skip-node)         export HONEY_BADGER_SKIP_NODE=1 ;;
         --skip-nano)         export HONEY_BADGER_SKIP_NANO=1 ;;
+        --skip-theme|--no-theme) export HONEY_BADGER_SKIP_THEME=1 ;;
         --*)                 echo "Unknown option: $arg (try --help)" >&2; exit 1 ;;
     esac
 done
@@ -89,14 +96,18 @@ else
     readonly NC='\033[0m'
 fi
 
-# Banner and branding
+# Banner — use unified hb_show_banner if available, fallback inline
 show_banner() {
-    echo -e "${YELLOW}${BOLD}"
-    echo "  🦡 ================================================== 🦡"
-    echo "     HONEY BADGER OS - UNIVERSAL INSTALLER"
-    echo "     Fearless Multi-Distribution Post-Install Scripts"
-    echo "  🦡 ================================================== 🦡"
-    echo -e "${NC}"
+    if declare -f hb_show_banner >/dev/null 2>&1; then
+        hb_show_banner "" "Fearless Multi-Distribution Post-Install Scripts"
+    else
+        echo -e "${YELLOW}${BOLD}"
+        echo "  🦡 ================================================== 🦡"
+        echo "     HONEY BADGER OS - UNIVERSAL INSTALLER"
+        echo "     Fearless Multi-Distribution Post-Install Scripts"
+        echo "  🦡 ================================================== 🦡"
+        echo -e "${NC}"
+    fi
 }
 
 # Logging functions (only define if not already provided by lib/common.sh)
@@ -386,17 +397,27 @@ run_preflight_checks() {
     fi
     log_success "Internet connectivity confirmed"
     
-    # Check disk space (at least 1GB free)
+    # Check disk space (requirement varies by install type)
     log_info "Checking available disk space..."
-    local available=$(df / | awk 'NR==2 {print $4}')
+    local available
+    available=$(df / | awk 'NR==2 {print $4}')
     local available_gb=$((available / 1024 / 1024))
+    local required_gb="${HONEY_BADGER_MIN_DISK_GB:-1}"
     
-    if [[ $available_gb -lt 1 ]]; then
-        log_error "Insufficient disk space. At least 1GB free space required."
+    # If an install type is already set, apply type-specific requirements
+    case "${HONEY_BADGER_INSTALL_TYPE:-}" in
+        full)      required_gb="${HONEY_BADGER_MIN_DISK_GB:-5}" ;;
+        developer) required_gb="${HONEY_BADGER_MIN_DISK_GB:-3}" ;;
+        desktop)   required_gb="${HONEY_BADGER_MIN_DISK_GB:-3}" ;;
+        minimal)   required_gb="${HONEY_BADGER_MIN_DISK_GB:-1}" ;;
+    esac
+    
+    if [[ $available_gb -lt $required_gb ]]; then
+        log_error "Insufficient disk space. At least ${required_gb}GB free space required."
         log_info "Available: ${available_gb}GB"
         exit 1
     fi
-    log_success "Disk space check passed (${available_gb}GB available)"
+    log_success "Disk space check passed (${available_gb}GB available, ${required_gb}GB required)"
     
     # Check if required directories exist
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -514,12 +535,19 @@ run_installer() {
             hb_clear_checkpoint
         fi
         log_success "Installation completed successfully!"
-        show_post_install_message "$install_type"
+        # Use unified post-install from lib/common.sh if available, else use local
+        if declare -f show_post_install >/dev/null 2>&1; then
+            show_post_install
+        else
+            show_post_install_message "$install_type"
+        fi
     else
         log_error "Installation failed!"
         log_info "Check the installation logs for details:"
-        log_info "  • /tmp/honeybadger-install.log"
-        log_info "  • /tmp/honeybadger-${distro}-install.log"
+        if [[ -n "${LOG_FILE:-}" ]]; then
+            log_info "  • ${LOG_FILE}"
+        fi
+        log_info "  • ${_HB_LOG_DIR:-/tmp}/honeybadger-${distro}-*.log"
         exit 1
     fi
 }
@@ -644,8 +672,10 @@ main() {
     run_installer "$distro" "$install_type"
 }
 
-# Handle interruption gracefully
-trap 'echo -e "\n${RED:-}Installation interrupted by user${NC:-}"; exit 130' INT TERM
+# Handle interruption gracefully (lib/common.sh sets its own traps; this is a fallback)
+if ! declare -f _hb_cleanup >/dev/null 2>&1; then
+    trap 'echo -e "\n${RED:-}Installation interrupted by user${NC:-}"; exit 130' INT TERM
+fi
 
 # Run main function if script is executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

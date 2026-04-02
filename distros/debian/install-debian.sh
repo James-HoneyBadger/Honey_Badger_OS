@@ -7,7 +7,7 @@ set -euo pipefail
 # Source shared library
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/common.sh"
 
-LOG_FILE="/tmp/honeybadger-debian-install.log"
+hb_init_distro_log "debian"
 
 # ── Package lists ────────────────────────────────────────────────────────────
 declare -a BASE_PACKAGES=(
@@ -59,6 +59,7 @@ declare -a APPLICATIONS_PACKAGES=(
     "thunderbird" "telegram-desktop"
     "galculator" "mousepad" "xarchiver"
     "synaptic" "gdebi"
+    "gstreamer1.0-plugins-base" "gstreamer1.0-plugins-good" "gstreamer1.0-plugins-bad" "gstreamer1.0-plugins-ugly" "gstreamer1.0-libav"
 )
 
 declare -a SNAP_PACKAGES=(
@@ -75,20 +76,11 @@ declare -a FLATPAK_PACKAGES=(
 
 # ── Banner ───────────────────────────────────────────────────────────────────
 show_banner() {
-    echo -e "${YELLOW}${BOLD}" | tee -a "$LOG_FILE"
-    echo "  🦡 ================================================== 🦡" | tee -a "$LOG_FILE"
-    echo "     HONEY BADGER OS - DEBIAN/UBUNTU INSTALLER" | tee -a "$LOG_FILE"
-    echo "     Fearless Debian-based Distribution Setup" | tee -a "$LOG_FILE"
-    echo "  🦡 ================================================== 🦡" | tee -a "$LOG_FILE"
-    echo -e "${NC}" | tee -a "$LOG_FILE"
+    hb_show_banner "Debian/Ubuntu" "Fearless Debian-based Distribution Setup"
 }
 
 # ── System check ─────────────────────────────────────────────────────────────
 check_debian_system() {
-    if ! command -v apt-get >/dev/null 2>&1; then
-        log_error "This script is for Debian-based systems only!"
-        exit 1
-    fi
     if [[ -f /etc/os-release ]]; then
         source /etc/os-release
         log_info "Detected: ${PRETTY_NAME:-Debian}"
@@ -144,12 +136,18 @@ add_repositories() {
     esac
     local docker_codename
     docker_codename="$(lsb_release -cs 2>/dev/null)"
-    curl -fsSL "https://download.docker.com/linux/${distro_id}/gpg" | hb_sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg 2>/dev/null || true
+    curl -fsSL "https://download.docker.com/linux/${distro_id}/gpg" | hb_sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg 2>/dev/null || {
+        log_warning "Failed to download Docker GPG key for ${distro_id}"
+        hb_json_add_error "Docker GPG key download failed"
+    }
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/${distro_id} ${docker_codename} stable" | hb_sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
     # GitHub CLI repository
     log_info "Adding GitHub CLI repository..."
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | hb_sudo tee /usr/share/keyrings/githubcli-archive-keyring.gpg > /dev/null 2>&1 || true
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | hb_sudo tee /usr/share/keyrings/githubcli-archive-keyring.gpg > /dev/null 2>&1 || {
+        log_warning "Failed to download GitHub CLI GPG key"
+        hb_json_add_error "GitHub CLI GPG key download failed"
+    }
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | hb_sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
 
     # VS Code repository (if not using Snap)
@@ -296,6 +294,7 @@ main() {
     echo "Honey Badger OS - Debian/Ubuntu Installation Log" > "$LOG_FILE"
     echo "Started: $(date)" >> "$LOG_FILE"
     hb_json_init
+    hb_rollback_init
     export HONEY_BADGER_DISTRO="debian"
     local install_type="${HONEY_BADGER_INSTALL_TYPE:-full}"
     case "$install_type" in
@@ -314,8 +313,10 @@ main() {
         "sudo apt install -y" \
         "sudo apt autoremove -y && sudo apt autoclean"
     if [[ "$install_type" != "minimal" ]]; then
-        setup_honey_badger_theme
-        install_assets
+        if ! hb_skip_component "theme"; then
+            setup_honey_badger_theme
+            install_assets
+        fi
     fi
     if [[ "$install_type" == "full" || "$install_type" == "developer" ]]; then
         setup_development_environment
@@ -323,5 +324,4 @@ main() {
     show_post_install
 }
 
-trap 'echo -e "\n${RED}Installation interrupted${NC}"; exit 1' INT TERM
 main "$@"

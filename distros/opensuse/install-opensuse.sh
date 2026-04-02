@@ -7,7 +7,7 @@ set -euo pipefail
 # Source shared library
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/common.sh"
 
-LOG_FILE="/tmp/honeybadger-opensuse-install.log"
+hb_init_distro_log "opensuse"
 
 # ── Package lists ────────────────────────────────────────────────────────────
 declare -a BASE_PACKAGES=(
@@ -60,20 +60,11 @@ declare -a APPLICATIONS_PACKAGES=(
 
 # ── Banner ───────────────────────────────────────────────────────────────────
 show_banner() {
-    echo -e "${YELLOW}${BOLD}" | tee -a "$LOG_FILE"
-    echo "  🦡 ================================================== 🦡" | tee -a "$LOG_FILE"
-    echo "     HONEY BADGER OS - OPENSUSE INSTALLER" | tee -a "$LOG_FILE"
-    echo "     Fearless openSUSE-based Distribution Setup" | tee -a "$LOG_FILE"
-    echo "  🦡 ================================================== 🦡" | tee -a "$LOG_FILE"
-    echo -e "${NC}" | tee -a "$LOG_FILE"
+    hb_show_banner "openSUSE" "Fearless openSUSE-based Distribution Setup"
 }
 
 # ── System check ─────────────────────────────────────────────────────────────
 check_opensuse_system() {
-    if ! command -v zypper >/dev/null 2>&1; then
-        log_error "This script requires the zypper package manager"
-        exit 1
-    fi
     if [[ -f /etc/os-release ]]; then
         source /etc/os-release
         log_info "Detected: ${PRETTY_NAME:-openSUSE}"
@@ -194,6 +185,7 @@ main() {
     echo "Honey Badger OS - openSUSE Installation Log" > "$LOG_FILE"
     echo "Started: $(date)" >> "$LOG_FILE"
     hb_json_init
+    hb_rollback_init
     export HONEY_BADGER_DISTRO="opensuse"
     local install_type="${HONEY_BADGER_INSTALL_TYPE:-full}"
     case "$install_type" in
@@ -212,8 +204,10 @@ main() {
         "sudo zypper --non-interactive install" \
         "sudo zypper --non-interactive clean --all"
     if [[ "$install_type" != "minimal" ]]; then
-        setup_honey_badger_theme
-        install_assets
+        if ! hb_skip_component "theme"; then
+            setup_honey_badger_theme
+            install_assets
+        fi
     fi
     if [[ "$install_type" == "full" || "$install_type" == "developer" ]]; then
         setup_dev_opensuse
@@ -221,5 +215,4 @@ main() {
     show_post_install
 }
 
-trap 'echo -e "\n${RED}Installation interrupted${NC}"; exit 1' INT TERM
 main "$@"

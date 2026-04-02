@@ -7,7 +7,7 @@ set -euo pipefail
 # Source shared library
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/common.sh"
 
-LOG_FILE="/tmp/honeybadger-fedora-install.log"
+hb_init_distro_log "fedora"
 
 # ── Package lists ────────────────────────────────────────────────────────────
 declare -a BASE_PACKAGES=(
@@ -55,24 +55,16 @@ declare -a APPLICATIONS_PACKAGES=(
     "ImageMagick" "ffmpeg-free"
     "thunderbird" "telegram-desktop"
     "galculator" "mousepad" "xarchiver"
+    "gstreamer1-plugins-base" "gstreamer1-plugins-good" "gstreamer1-plugins-bad-free" "gstreamer1-plugins-ugly-free" "gstreamer1-plugin-libav"
 )
 
 # ── Banner ───────────────────────────────────────────────────────────────────
 show_banner() {
-    echo -e "${YELLOW}${BOLD}" | tee -a "$LOG_FILE"
-    echo "  🦡 ================================================== 🦡" | tee -a "$LOG_FILE"
-    echo "     HONEY BADGER OS - FEDORA/RHEL INSTALLER" | tee -a "$LOG_FILE"
-    echo "     Fearless Fedora-based Distribution Setup" | tee -a "$LOG_FILE"
-    echo "  🦡 ================================================== 🦡" | tee -a "$LOG_FILE"
-    echo -e "${NC}" | tee -a "$LOG_FILE"
+    hb_show_banner "Fedora/RHEL" "Fearless Fedora-based Distribution Setup"
 }
 
 # ── System check ─────────────────────────────────────────────────────────────
 check_fedora_system() {
-    if ! command -v dnf >/dev/null 2>&1 && ! command -v yum >/dev/null 2>&1; then
-        log_error "This script requires dnf or yum package manager"
-        exit 1
-    fi
     if [[ -f /etc/os-release ]]; then
         source /etc/os-release
         log_info "Detected: ${PRETTY_NAME:-Fedora}"
@@ -188,6 +180,7 @@ main() {
     echo "Honey Badger OS - Fedora Installation Log" > "$LOG_FILE"
     echo "Started: $(date)" >> "$LOG_FILE"
     hb_json_init
+    hb_rollback_init
     export HONEY_BADGER_DISTRO="fedora"
     local install_type="${HONEY_BADGER_INSTALL_TYPE:-full}"
     local pm
@@ -208,8 +201,10 @@ main() {
         "sudo $pm install -y" \
         "sudo $pm autoremove -y && sudo $pm clean all"
     if [[ "$install_type" != "minimal" ]]; then
-        setup_honey_badger_theme
-        install_assets
+        if ! hb_skip_component "theme"; then
+            setup_honey_badger_theme
+            install_assets
+        fi
     fi
     if [[ "$install_type" == "full" || "$install_type" == "developer" ]]; then
         setup_dev_fedora
@@ -217,5 +212,4 @@ main() {
     show_post_install
 }
 
-trap 'echo -e "\n${RED}Installation interrupted${NC}"; exit 1' INT TERM
 main "$@"

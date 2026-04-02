@@ -7,7 +7,7 @@ set -euo pipefail
 # Source shared library
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/common.sh"
 
-LOG_FILE="/tmp/honeybadger-arch-install.log"
+hb_init_distro_log "arch"
 
 # ── Package lists ────────────────────────────────────────────────────────────
 declare -a BASE_PACKAGES=(
@@ -56,6 +56,7 @@ declare -a APPLICATIONS_PACKAGES=(
     "thunderbird" "telegram-desktop" "discord"
     "galculator" "xarchiver" "mousepad"
     "xfce4-screenshooter"
+    "gstreamer" "gst-plugins-base" "gst-plugins-good" "gst-plugins-bad" "gst-plugins-ugly" "gst-libav"
 )
 
 declare -a AUR_PACKAGES=(
@@ -67,12 +68,7 @@ declare -a AUR_PACKAGES=(
 
 # ── Banner ───────────────────────────────────────────────────────────────────
 show_banner() {
-    echo -e "${YELLOW}${BOLD}" | tee -a "$LOG_FILE"
-    echo "  🦡 ================================================== 🦡" | tee -a "$LOG_FILE"
-    echo "     HONEY BADGER OS - ARCH LINUX INSTALLER" | tee -a "$LOG_FILE"
-    echo "     Fearless Arch-based Distribution Setup" | tee -a "$LOG_FILE"
-    echo "  🦡 ================================================== 🦡" | tee -a "$LOG_FILE"
-    echo -e "${NC}" | tee -a "$LOG_FILE"
+    hb_show_banner "Arch Linux" "Fearless Arch-based Distribution Setup"
 }
 
 # ── System check ─────────────────────────────────────────────────────────────
@@ -106,7 +102,10 @@ install_yay() {
     local temp_dir
     temp_dir="$(mktemp -d)"
     hb_register_temp "$temp_dir"
-    git clone https://aur.archlinux.org/yay.git "$temp_dir"
+    if ! git clone https://aur.archlinux.org/yay.git "$temp_dir"; then
+        log_error "Failed to clone yay repository"
+        return 1
+    fi
     (cd "$temp_dir" && makepkg -si --noconfirm)
     rm -rf "$temp_dir"
     log_success "yay AUR helper installed"
@@ -209,6 +208,7 @@ main() {
     echo "Honey Badger OS - Arch Linux Installation Log" > "$LOG_FILE"
     echo "Started: $(date)" >> "$LOG_FILE"
     hb_json_init
+    hb_rollback_init
     export HONEY_BADGER_DISTRO="arch"
     local install_type="${HONEY_BADGER_INSTALL_TYPE:-full}"
     case "$install_type" in
@@ -218,7 +218,6 @@ main() {
         minimal) hb_set_total_steps 5 ;;
     esac
     show_banner
-    check_arch_system
     update_system
     install_packages_by_type
     setup_nano
@@ -227,8 +226,10 @@ main() {
         "sudo pacman -S --noconfirm" \
         "sudo pacman -Sc --noconfirm"
     if [[ "$install_type" != "minimal" ]]; then
-        setup_honey_badger_theme
-        install_assets
+        if ! hb_skip_component "theme"; then
+            setup_honey_badger_theme
+            install_assets
+        fi
     fi
     if [[ "$install_type" == "full" || "$install_type" == "developer" ]]; then
         setup_development_environment
@@ -236,5 +237,4 @@ main() {
     show_post_install
 }
 
-trap 'echo -e "\n${RED}Installation interrupted${NC}"; exit 1' INT TERM
 main "$@"

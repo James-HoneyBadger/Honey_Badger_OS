@@ -7,7 +7,7 @@ set -euo pipefail
 # Source shared library
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/common.sh"
 
-LOG_FILE="/tmp/honeybadger-slackware-install.log"
+hb_init_distro_log "slackware"
 
 # ── Package lists (slackpkg names) ──────────────────────────────────────────
 # Slackware has disk sets rather than individual packages; we install sets and extras
@@ -64,20 +64,11 @@ declare -a APPLICATIONS_PACKAGES=(
 
 # ── Banner ──────────────────────────────────────────────────────────────────
 show_banner() {
-    echo -e "${YELLOW}${BOLD}" | tee -a "$LOG_FILE"
-    echo "  🦡 ================================================== 🦡" | tee -a "$LOG_FILE"
-    echo "     HONEY BADGER OS - SLACKWARE INSTALLER" | tee -a "$LOG_FILE"
-    echo "     Fearless Slackware Linux Setup" | tee -a "$LOG_FILE"
-    echo "  🦡 ================================================== 🦡" | tee -a "$LOG_FILE"
-    echo -e "${NC}" | tee -a "$LOG_FILE"
+    hb_show_banner "Slackware" "Fearless Slackware Linux Setup"
 }
 
 # ── System check ────────────────────────────────────────────────────────────
 check_slackware_system() {
-    if ! command -v slackpkg >/dev/null 2>&1; then
-        log_error "This script requires slackpkg"
-        exit 1
-    fi
     if [[ -f /etc/slackware-version ]]; then
         log_info "Detected: $(cat /etc/slackware-version)"
     fi
@@ -310,6 +301,7 @@ main() {
     echo "Honey Badger OS - Slackware Installation Log" > "$LOG_FILE"
     echo "Started: $(date)" >> "$LOG_FILE"
     hb_json_init
+    hb_rollback_init
     export HONEY_BADGER_DISTRO="slackware"
     local install_type="${HONEY_BADGER_INSTALL_TYPE:-full}"
     case "$install_type" in
@@ -330,8 +322,10 @@ main() {
         "sudo slackpkg install" \
         "echo 'Manual cleanup recommended on Slackware'"
     if [[ "$install_type" != "minimal" ]]; then
-        setup_honey_badger_theme
-        install_assets
+        if ! hb_skip_component "theme"; then
+            setup_honey_badger_theme
+            install_assets
+        fi
     fi
     if [[ "$install_type" == "full" || "$install_type" == "developer" ]]; then
         setup_docker_slackware
@@ -339,5 +333,4 @@ main() {
     show_post_install
 }
 
-trap 'echo -e "\n${RED}Installation interrupted${NC}"; exit 1' INT TERM
 main "$@"

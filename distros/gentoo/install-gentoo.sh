@@ -7,7 +7,7 @@ set -euo pipefail
 # Source shared library
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/common.sh"
 
-LOG_FILE="/tmp/honeybadger-gentoo-install.log"
+hb_init_distro_log "gentoo"
 
 # ── Package lists ────────────────────────────────────────────────────────────
 # Gentoo uses category/package format
@@ -60,24 +60,17 @@ declare -a APPLICATIONS_PACKAGES=(
     "media-gfx/imagemagick" "media-video/ffmpeg"
     "mail-client/thunderbird"
     "sci-calculators/galculator" "app-editors/mousepad" "app-arch/xarchiver"
+    "media-libs/gstreamer" "media-libs/gst-plugins-base" "media-libs/gst-plugins-good"
+    "media-libs/gst-plugins-bad" "media-libs/gst-plugins-ugly" "media-plugins/gst-plugins-libav"
 )
 
 # ── Banner ───────────────────────────────────────────────────────────────────
 show_banner() {
-    echo -e "${YELLOW}${BOLD}" | tee -a "$LOG_FILE"
-    echo "  🦡 ================================================== 🦡" | tee -a "$LOG_FILE"
-    echo "     HONEY BADGER OS - GENTOO INSTALLER" | tee -a "$LOG_FILE"
-    echo "     Fearless Gentoo-based Distribution Setup" | tee -a "$LOG_FILE"
-    echo "  🦡 ================================================== 🦡" | tee -a "$LOG_FILE"
-    echo -e "${NC}" | tee -a "$LOG_FILE"
+    hb_show_banner "Gentoo" "Fearless Gentoo-based Distribution Setup"
 }
 
 # ── System check ─────────────────────────────────────────────────────────────
 check_gentoo_system() {
-    if ! command -v emerge >/dev/null 2>&1; then
-        log_error "This script requires the Portage (emerge) package manager"
-        exit 1
-    fi
     if [[ -f /etc/os-release ]]; then
         source /etc/os-release
         log_info "Detected: ${PRETTY_NAME:-Gentoo Linux}"
@@ -127,13 +120,10 @@ install_emerge_packages() {
 # ── XFCE service setup (Gentoo-specific) ─────────────────────────────────────
 setup_xfce_gentoo() {
     hb_next_step "Setting up XFCE desktop for Gentoo..."
-    # Enable display manager
-    if command -v rc-update >/dev/null 2>&1; then
-        hb_sudo rc-update add dbus default 2>/dev/null || true
-        hb_sudo rc-update add elogind boot 2>/dev/null || true
-        hb_sudo rc-update add lightdm default 2>/dev/null || true
-    elif command -v systemctl >/dev/null 2>&1; then
-        hb_sudo systemctl enable lightdm 2>/dev/null || true
+    hb_enable_service dbus
+    hb_enable_service elogind
+    hb_enable_service lightdm
+    if command -v systemctl >/dev/null 2>&1; then
         hb_sudo systemctl set-default graphical.target 2>/dev/null || true
     fi
     setup_xfce
@@ -184,6 +174,7 @@ main() {
     echo "Honey Badger OS - Gentoo Installation Log" > "$LOG_FILE"
     echo "Started: $(date)" >> "$LOG_FILE"
     hb_json_init
+    hb_rollback_init
     export HONEY_BADGER_DISTRO="gentoo"
     local install_type="${HONEY_BADGER_INSTALL_TYPE:-full}"
     case "$install_type" in
@@ -202,8 +193,10 @@ main() {
         "sudo emerge --ask" \
         "sudo emerge --depclean && sudo eclean-dist --deep"
     if [[ "$install_type" != "minimal" ]]; then
-        setup_honey_badger_theme
-        install_assets
+        if ! hb_skip_component "theme"; then
+            setup_honey_badger_theme
+            install_assets
+        fi
     fi
     if [[ "$install_type" == "full" || "$install_type" == "developer" ]]; then
         setup_dev_gentoo
@@ -211,5 +204,4 @@ main() {
     show_post_install
 }
 
-trap 'echo -e "\n${RED}Installation interrupted${NC}"; exit 1' INT TERM
 main "$@"

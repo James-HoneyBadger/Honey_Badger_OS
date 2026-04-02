@@ -13,7 +13,9 @@ _install_sh() {
         '--skip-docker[Skip Docker setup]' \
         '--skip-python[Skip Python dev setup]' \
         '--skip-node[Skip Node.js dev setup]' \
-        '--skip-nano[Skip nano configuration]'
+        '--skip-nano[Skip nano configuration]' \
+        '--skip-theme[Skip theme and wallpaper]' \
+        '--no-theme[Skip theme and wallpaper]'
 }
 
 _honey_badger_install() {

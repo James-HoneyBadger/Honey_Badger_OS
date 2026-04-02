@@ -5,6 +5,8 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly Sunday midnight UTC
 
 jobs:
   lint:
@@ -31,6 +33,34 @@ jobs:
           done
           exit $failed
 
+      - name: Completions syntax check
+        run: |
+          failed=0
+          for f in completions/honey-badger.bash completions/honey-badger.zsh; do
+            if [[ -f "$f" ]]; then
+              if bash -n "$f" 2>/dev/null; then
+                echo "✓ $f"
+              else
+                echo "✗ $f (syntax error)"
+                failed=1
+              fi
+            fi
+          done
+          exit $failed
+
+      - name: Config sourcing validation
+        run: |
+          # Verify config file can be sourced without side effects
+          bash -c 'source config/honey-badger-os.conf && echo "✓ Config sources cleanly"'
+          # Verify config validation rejects command substitution
+          echo 'EVIL=$(rm -rf /)' > /tmp/bad-config.conf
+          if bash -c 'source lib/common.sh && _hb_validate_config /tmp/bad-config.conf' 2>/dev/null; then
+            echo "✗ Config validation should reject command substitution"
+            exit 1
+          else
+            echo "✓ Config validation correctly rejects command substitution"
+          fi
+
       - name: ShellCheck
         run: |
           shellcheck -x -s bash \
@@ -39,7 +69,7 @@ jobs:
             distros/*/install-*.sh \
             assets/honey-badger-info \
             assets/honey-badger-update \
-            assets/honey-badger-install || true
+            assets/honey-badger-install
 
   test:
     name: Test Suite
@@ -69,6 +99,8 @@ jobs:
             image: debian:bookworm
           - distro: fedora
             image: fedora:latest
+          - distro: slackware
+            image: vbatts/slackware:latest
           - distro: void
             image: ghcr.io/void-linux/void-glibc:latest
           - distro: opensuse
@@ -92,6 +124,9 @@ jobs:
             dnf install -y git
           elif command -v zypper >/dev/null 2>&1; then
             zypper --non-interactive install git
+          elif command -v slackpkg >/dev/null 2>&1; then
+            # Slackware: git may already be present in full images
+            command -v git >/dev/null 2>&1 || slackpkg update gpg 2>/dev/null || true
           elif command -v emerge >/dev/null 2>&1; then
             # Use getuto.sh for a fast Portage snapshot instead of slow emerge --sync
             emerge-webrsync --quiet 2>/dev/null || true

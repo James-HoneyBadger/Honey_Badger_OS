@@ -169,7 +169,8 @@ test_required_functions() {
                          "ensure_bashrc_line" "is_noninteractive" "hb_next_step"
                          "hb_check_network" "hb_backup_file" "hb_acquire_lock"
                          "hb_register_temp" "hb_skip_component" "log_debug"
-                         "hb_rollback_init" "hb_load_checkpoint" "hb_clear_checkpoint")
+                         "hb_rollback_init" "hb_load_checkpoint" "hb_clear_checkpoint"
+                         "hb_show_banner" "hb_init_distro_log" "hb_enable_service")
         for func in "${lib_funcs[@]}"; do
             if grep -qE "^${func}\s*\(\)" lib/common.sh; then
                 log_pass "lib/common.sh has '$func'"
@@ -232,10 +233,12 @@ test_environment_variables() {
         fi
     done
 
-    if [[ $scripts_using_var -eq 7 ]]; then
-        log_pass "All 7 distribution scripts use HONEY_BADGER_INSTALL_TYPE"
+    local total_distros
+    total_distros=$(find distros/*/install-*.sh -maxdepth 0 2>/dev/null | wc -l | tr -d ' ')
+    if [[ $scripts_using_var -eq $total_distros ]]; then
+        log_pass "All $total_distros distribution scripts use HONEY_BADGER_INSTALL_TYPE"
     elif [[ $scripts_using_var -gt 0 ]]; then
-        log_warn "$scripts_using_var/7 distribution scripts use HONEY_BADGER_INSTALL_TYPE"
+        log_warn "$scripts_using_var/$total_distros distribution scripts use HONEY_BADGER_INSTALL_TYPE"
         log_fail "Not all distro scripts use HONEY_BADGER_INSTALL_TYPE"
     else
         log_fail "No distribution scripts use HONEY_BADGER_INSTALL_TYPE"

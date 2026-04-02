@@ -3,7 +3,7 @@
 
 _honey_badger_install_sh() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
-    local opts="--help --dry-run --non-interactive --no-color --verbose --quiet --skip-docker --skip-python --skip-node --skip-nano"
+    local opts="--help --dry-run --non-interactive --no-color --verbose --quiet --skip-docker --skip-python --skip-node --skip-nano --skip-theme --no-theme"
     COMPREPLY=($(compgen -W "$opts" -- "$cur"))
 }
 complete -F _honey_badger_install_sh install.sh
