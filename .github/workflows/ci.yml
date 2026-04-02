@@ -74,6 +74,20 @@ jobs:
     container:
       image: ${{ matrix.image }}
     steps:
+      - name: Install container prerequisites
+        run: |
+          # actions/checkout needs Node.js which requires libstdc++ and other libs
+          if command -v xbps-install >/dev/null 2>&1; then
+            xbps-install -Syu xbps -y || true
+            xbps-install -Sy bash curl git libstdc++ -y
+          elif command -v pacman >/dev/null 2>&1; then
+            pacman -Sy --noconfirm git
+          elif command -v apt-get >/dev/null 2>&1; then
+            apt-get update && apt-get install -y git
+          elif command -v dnf >/dev/null 2>&1; then
+            dnf install -y git
+          fi
+
       - uses: actions/checkout@v4
 
       - name: Install bash (if needed)
