@@ -7,7 +7,7 @@ Honey Badger OS is a **post-install automation framework** for Linux. It is not 
 ## Goals
 
 1. **Multi-distro support** — A single entry point (`install.sh`) detects your distribution and runs the appropriate installer
-2. **Consistent experience** — Same tools, theme, and workflow regardless of whether you run Arch, Debian, Fedora, Void, or Slackware
+2. **Consistent experience** — Same tools, theme, and workflow regardless of whether you run Arch, Debian, Fedora, Gentoo, openSUSE, Void, or Slackware
 3. **Four installation profiles** — Full, Developer, Desktop, and Minimal to match different use cases
 4. **Security-first** — No `eval`, no `curl|bash`, safe defaults, dry-run support
 5. **Maintainability** — Shared library (`lib/common.sh`) eliminates code duplication across all distro scripts
@@ -58,5 +58,7 @@ install.sh  ──→  detect distro  ──→  distros/{distro}/install-{distr
 | Arch | pacman / yay | systemd | Manjaro, EndeavourOS, ArcoLinux, Artix |
 | Debian | apt | systemd | Ubuntu, Mint, Pop!_OS, Elementary, Zorin, Kali |
 | Fedora | dnf / yum | systemd | RHEL, CentOS, AlmaLinux, Rocky |
+| Gentoo | emerge (Portage) | OpenRC / systemd | Funtoo |
+| openSUSE | zypper | systemd | Leap, Tumbleweed, SLES, GeckoLinux |
 | Void | xbps | runit | — |
 | Slackware | slackpkg / sbopkg | SysV init | Salix |

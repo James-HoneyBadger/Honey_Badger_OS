@@ -12,6 +12,8 @@
 - **Arch Linux** family: Arch, Manjaro, EndeavourOS, ArcoLinux, Artix
 - **Debian** family: Debian, Ubuntu, Linux Mint, Pop!_OS, Elementary, Zorin, Kali
 - **Fedora** family: Fedora, RHEL, CentOS, AlmaLinux, Rocky Linux
+- **Gentoo** family: Gentoo, Funtoo
+- **openSUSE** family: openSUSE Tumbleweed, openSUSE Leap, SLES, GeckoLinux
 - **Void Linux** (glibc and musl)
 - **Slackware** family: Slackware, Salix
 

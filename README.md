@@ -17,6 +17,8 @@ Honey Badger OS is a collection of post-install scripts that automate the setup 
 | **Arch** | Arch Linux, Manjaro, EndeavourOS, ArcoLinux, Artix |
 | **Debian** | Debian, Ubuntu, Linux Mint, Pop!_OS, Elementary, Zorin, Kali |
 | **Fedora** | Fedora, RHEL, CentOS, AlmaLinux, Rocky Linux |
+| **Gentoo** | Gentoo, Funtoo |
+| **openSUSE** | openSUSE Tumbleweed, openSUSE Leap, SLES, GeckoLinux |
 | **Void** | Void Linux (glibc and musl) |
 | **Slackware** | Slackware, Salix |
 
@@ -92,8 +94,10 @@ Honey_Badger_OS/
 │   ├── arch/install-arch.sh
 │   ├── debian/install-debian.sh
 │   ├── fedora/install-fedora.sh
-│   ├── void/install-void.sh
-│   └── slackware/install-slackware.sh
+│   ├── gentoo/install-gentoo.sh
+│   ├── opensuse/install-opensuse.sh
+│   ├── slackware/install-slackware.sh
+│   └── void/install-void.sh
 ├── config/
 │   ├── honey-badger-os.conf  # Project configuration
 │   └── nanorc                 # Enhanced nano config

@@ -8,9 +8,9 @@ conventions, testing workflow, and how to add support for a new distribution.
 ```bash
 git clone https://github.com/James-HoneyBadger/Honey_Badger_OS.git
 cd Honey_Badger_OS
-bash verify_scripts.sh      # Static checks (should be 84+ passed)
-bash verify_advanced.sh     # Security checks (should be 19+ passed)
-bash test_final.sh          # Smoke tests (should be 23+ passed)
+bash verify_scripts.sh      # Static checks (should be 115+ passed)
+bash verify_advanced.sh     # Security checks (should be 28+ passed)
+bash test_final.sh          # Smoke tests (should be 33+ passed)
 ```
 
 ## Project Structure

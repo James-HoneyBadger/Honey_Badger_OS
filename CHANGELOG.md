@@ -5,6 +5,21 @@ All notable changes to Honey Badger OS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-04-02
+
+### Added
+- **openSUSE support** (`distros/opensuse/install-opensuse.sh`) — zypper package manager, Packman multimedia repository, XFCE patterns, Tumbleweed/Leap/SLES/GeckoLinux detection
+- **Gentoo support** (`distros/gentoo/install-gentoo.sh`) — emerge/Portage package manager, category/package naming, OpenRC + systemd dual init support, Funtoo detection
+- **CI matrix expansion** — openSUSE Tumbleweed and Gentoo Stage3 container dry-runs in GitHub Actions (8 distros total)
+
+### Changed
+- **`install.sh` detection** — Added os-release, ID_LIKE, package manager (`zypper`, `emerge`), and file-based (`/etc/SuSE-release`, `/etc/gentoo-release`) fallback detection for openSUSE and Gentoo
+- **Test suite counts** — Updated `verify_scripts.sh`, `verify_advanced.sh`, and `test_final.sh` for 7-distro coverage (176 total tests)
+- **Documentation** — README, PROJECT_OVERVIEW, USER_GUIDE, CONTRIBUTING, and VERIFICATION_REPORT updated for 7-distro support
+
+### Fixed
+- **Gentoo CI timeout** — Use `emerge-webrsync` instead of `emerge --sync` for fast Portage tree population in CI containers
+
 ## [2.0.0] - 2026-04-02
 
 ### Added

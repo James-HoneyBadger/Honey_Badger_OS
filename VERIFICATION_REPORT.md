@@ -27,7 +27,7 @@ Scans for security issues and robustness patterns:
 - **Environment handling** — Default values via parameter expansion
 - **Error robustness** — Command existence checks, trap handlers
 - **File operations** — Existence checks before modifications
-- **Install type completeness** — All 5 distros support all 4 types
+- **Install type completeness** — All 7 distros support all 4 types
 - **JSON output** — All distros use `hb_json_init`/`hb_json_write`
 
 ### 3. Smoke Tests (`test_final.sh`)
