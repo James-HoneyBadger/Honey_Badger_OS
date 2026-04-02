@@ -86,7 +86,7 @@ test_file_structure() {
     fi
 
     log_test "Distribution scripts exist"
-    local distros=("arch" "debian" "fedora" "slackware" "void")
+    local distros=("arch" "debian" "fedora" "gentoo" "opensuse" "slackware" "void")
     for distro in "${distros[@]}"; do
         local script="distros/$distro/install-$distro.sh"
         if [[ -f "$script" ]]; then
@@ -232,10 +232,10 @@ test_environment_variables() {
         fi
     done
 
-    if [[ $scripts_using_var -eq 5 ]]; then
-        log_pass "All 5 distribution scripts use HONEY_BADGER_INSTALL_TYPE"
+    if [[ $scripts_using_var -eq 7 ]]; then
+        log_pass "All 7 distribution scripts use HONEY_BADGER_INSTALL_TYPE"
     elif [[ $scripts_using_var -gt 0 ]]; then
-        log_warn "$scripts_using_var/5 distribution scripts use HONEY_BADGER_INSTALL_TYPE"
+        log_warn "$scripts_using_var/7 distribution scripts use HONEY_BADGER_INSTALL_TYPE"
         log_fail "Not all distro scripts use HONEY_BADGER_INSTALL_TYPE"
     else
         log_fail "No distribution scripts use HONEY_BADGER_INSTALL_TYPE"

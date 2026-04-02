@@ -29,6 +29,8 @@ test_syntax_all() {
         distros/fedora/install-fedora.sh
         distros/void/install-void.sh
         distros/slackware/install-slackware.sh
+        distros/opensuse/install-opensuse.sh
+        distros/gentoo/install-gentoo.sh
         verify_scripts.sh
         verify_advanced.sh
         assets/honey-badger-info

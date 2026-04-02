@@ -38,6 +38,8 @@ Environment variables:
 Supported distributions:
   Arch Linux    (Arch, Manjaro, EndeavourOS, ArcoLinux, Artix)
   Debian/Ubuntu (Debian, Ubuntu, Mint, Pop!_OS, Elementary, Zorin, Kali)
+  Gentoo        (Gentoo, Funtoo)
+  openSUSE      (Tumbleweed, Leap, GeckoLinux, SLES)
   Red Hat       (Fedora, RHEL, CentOS, AlmaLinux, Rocky Linux)
   Slackware     (Slackware, Salix)
   Void Linux
@@ -168,6 +170,14 @@ detect_distribution() {
                 echo "void"
                 return 0
                 ;;
+            opensuse*|sles|sled)
+                echo "opensuse"
+                return 0
+                ;;
+            gentoo|funtoo)
+                echo "gentoo"
+                return 0
+                ;;
         esac
         
         # Check ID_LIKE for derivatives
@@ -186,8 +196,8 @@ detect_distribution() {
                     return 0
                     ;;
                 *suse*)
-                    log_error "openSUSE is not currently supported"
-                    return 1
+                    echo "opensuse"
+                    return 0
                     ;;
             esac
         fi
@@ -212,6 +222,12 @@ detect_distribution() {
     elif command -v xbps-install >/dev/null 2>&1; then
         echo "void"
         return 0
+    elif command -v zypper >/dev/null 2>&1; then
+        echo "opensuse"
+        return 0
+    elif command -v emerge >/dev/null 2>&1; then
+        echo "gentoo"
+        return 0
     fi
     
     # Method 3: Check specific files
@@ -229,6 +245,12 @@ detect_distribution() {
         return 0
     elif [[ -f /etc/void-release ]]; then
         echo "void"
+        return 0
+    elif [[ -f /etc/SuSE-release ]] || [[ -f /etc/SUSE-brand ]]; then
+        echo "opensuse"
+        return 0
+    elif [[ -f /etc/gentoo-release ]]; then
+        echo "gentoo"
         return 0
     fi
     
@@ -595,6 +617,8 @@ main() {
         log_info "Currently supported distribution families:"
         echo "  • Arch Linux (Arch, Manjaro, EndeavourOS, ArcoLinux, Artix)"
         echo "  • Debian (Debian, Ubuntu, Mint, Pop!_OS, Elementary, Zorin)"
+        echo "  • Gentoo (Gentoo, Funtoo)"
+        echo "  • openSUSE (Tumbleweed, Leap, GeckoLinux, SLES)"
         echo "  • Red Hat (Fedora, RHEL, CentOS, AlmaLinux, Rocky Linux)"
         echo "  • Slackware (Slackware, Salix)"
         echo "  • Void Linux"

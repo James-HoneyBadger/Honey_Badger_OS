@@ -168,10 +168,10 @@ test_sudo_usage() {
             using_hb_sudo=$((using_hb_sudo + 1))
         fi
     done
-    if [[ $using_hb_sudo -eq 5 ]]; then
-        log_pass "All 5 distro scripts use hb_sudo wrapper"
+    if [[ $using_hb_sudo -eq 7 ]]; then
+        log_pass "All 7 distro scripts use hb_sudo wrapper"
     else
-        log_fail "Only $using_hb_sudo/5 distro scripts use hb_sudo"
+        log_fail "Only $using_hb_sudo/7 distro scripts use hb_sudo"
     fi
 }
 
@@ -280,10 +280,10 @@ test_installation_completeness() {
                 scripts_supporting=$((scripts_supporting + 1))
             fi
         done
-        if [[ $scripts_supporting -eq 5 ]]; then
-            log_pass "All 5 scripts support '$install_type'"
+        if [[ $scripts_supporting -eq 7 ]]; then
+            log_pass "All 7 scripts support '$install_type'"
         elif [[ $scripts_supporting -gt 0 ]]; then
-            log_warn "$scripts_supporting/5 scripts support '$install_type'"
+            log_warn "$scripts_supporting/7 scripts support '$install_type'"
             log_fail "Not all scripts support '$install_type' type"
         else
             log_fail "No scripts support '$install_type' type"
@@ -302,10 +302,10 @@ test_json_output() {
             json_support=$((json_support + 1))
         fi
     done
-    if [[ $json_support -eq 5 ]]; then
-        log_pass "All 5 distro scripts support JSON output"
+    if [[ $json_support -eq 7 ]]; then
+        log_pass "All 7 distro scripts support JSON output"
     else
-        log_fail "Only $json_support/5 distro scripts support JSON output"
+        log_fail "Only $json_support/7 distro scripts support JSON output"
     fi
 }
 

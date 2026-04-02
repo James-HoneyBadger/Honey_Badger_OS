@@ -71,6 +71,10 @@ jobs:
             image: fedora:latest
           - distro: void
             image: ghcr.io/void-linux/void-glibc:latest
+          - distro: opensuse
+            image: opensuse/tumbleweed:latest
+          - distro: gentoo
+            image: gentoo/stage3:latest
     container:
       image: ${{ matrix.image }}
     steps:
@@ -86,6 +90,11 @@ jobs:
             apt-get update && apt-get install -y git
           elif command -v dnf >/dev/null 2>&1; then
             dnf install -y git
+          elif command -v zypper >/dev/null 2>&1; then
+            zypper --non-interactive install git
+          elif command -v emerge >/dev/null 2>&1; then
+            emerge --sync --quiet 2>/dev/null || true
+            emerge --ask=n dev-vcs/git 2>/dev/null || true
           fi
 
       - uses: actions/checkout@v4
