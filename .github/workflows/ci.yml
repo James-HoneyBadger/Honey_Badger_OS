@@ -93,7 +93,8 @@ jobs:
           elif command -v zypper >/dev/null 2>&1; then
             zypper --non-interactive install git
           elif command -v emerge >/dev/null 2>&1; then
-            emerge --sync --quiet 2>/dev/null || true
+            # Use getuto.sh for a fast Portage snapshot instead of slow emerge --sync
+            emerge-webrsync --quiet 2>/dev/null || true
             emerge --ask=n dev-vcs/git 2>/dev/null || true
           fi
 
