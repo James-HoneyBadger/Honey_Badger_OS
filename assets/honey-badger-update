@@ -1,0 +1,57 @@
+#!/bin/bash
+# Honey Badger OS - System Update Script
+# This is a fallback version; the live version is generated at install time in ~/.local/bin/
+
+set -euo pipefail
+
+NC='\033[0m'; BOLD='\033[1m'; YELLOW='\033[0;33m'; GREEN='\033[0;32m'; RED='\033[0;31m'; CYAN='\033[0;36m'
+
+if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
+    echo -e "${YELLOW}${BOLD}🦡 Honey Badger OS - System Update${NC}"
+    echo ""
+    echo "Usage: honey-badger-update"
+    echo ""
+    echo "Updates all system packages, Flatpak, and Snap packages."
+    echo "Auto-detects the appropriate package manager."
+    exit 0
+fi
+
+echo -e "${YELLOW}${BOLD}🦡 Honey Badger OS - System Update${NC}\n"
+
+# Detect package manager and update
+if command -v pacman >/dev/null 2>&1; then
+    echo -e "${CYAN}Updating via pacman...${NC}"
+    sudo pacman -Syu --noconfirm
+elif command -v apt-get >/dev/null 2>&1; then
+    echo -e "${CYAN}Updating via apt...${NC}"
+    sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get autoremove -y
+elif command -v dnf >/dev/null 2>&1; then
+    echo -e "${CYAN}Updating via dnf...${NC}"
+    sudo dnf update -y && sudo dnf autoremove -y
+elif command -v yum >/dev/null 2>&1; then
+    echo -e "${CYAN}Updating via yum...${NC}"
+    sudo yum update -y
+elif command -v xbps-install >/dev/null 2>&1; then
+    echo -e "${CYAN}Updating via xbps...${NC}"
+    sudo xbps-install -Syu
+elif command -v slackpkg >/dev/null 2>&1; then
+    echo -e "${CYAN}Updating via slackpkg...${NC}"
+    sudo slackpkg update && sudo slackpkg upgrade-all
+else
+    echo -e "${RED}No supported package manager found${NC}"
+    exit 1
+fi
+
+# Update flatpak if available
+if command -v flatpak >/dev/null 2>&1; then
+    echo -e "${CYAN}Updating Flatpak packages...${NC}"
+    flatpak update -y 2>/dev/null || true
+fi
+
+# Update snap if available
+if command -v snap >/dev/null 2>&1; then
+    echo -e "${CYAN}Updating Snap packages...${NC}"
+    sudo snap refresh 2>/dev/null || true
+fi
+
+echo -e "\n${GREEN}${BOLD}System update complete! 🦡${NC}"

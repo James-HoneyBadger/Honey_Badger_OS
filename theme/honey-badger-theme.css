@@ -48,3 +48,198 @@
     background-color: @theme_tooltip_bg_color;
     color: @theme_tooltip_fg_color;
 }
+
+/* ── Headerbar ───────────────────────────────────────────────────────────── */
+headerbar {
+    background: linear-gradient(to bottom, shade(@theme_bg_color, 1.1), shade(@theme_bg_color, 0.85));
+    border-bottom: 1px solid shade(@theme_bg_color, 0.6);
+    color: @theme_fg_color;
+    padding: 4px 8px;
+}
+
+headerbar .title {
+    font-weight: bold;
+    color: @theme_selected_bg_color;
+}
+
+headerbar button {
+    background: transparent;
+    border: 1px solid transparent;
+    color: @theme_fg_color;
+}
+
+headerbar button:hover {
+    background-color: shade(@theme_bg_color, 1.2);
+    border-color: shade(@theme_bg_color, 0.8);
+}
+
+/* ── Checkboxes & Radio buttons ──────────────────────────────────────────── */
+check, radio {
+    background-color: @theme_base_color;
+    border: 1px solid shade(@theme_bg_color, 0.7);
+    border-radius: 3px;
+    min-width: 16px;
+    min-height: 16px;
+}
+
+check:checked, radio:checked {
+    background-color: @theme_selected_bg_color;
+    color: @theme_selected_fg_color;
+}
+
+check:hover, radio:hover {
+    border-color: @theme_selected_bg_color;
+}
+
+/* ── Switches ────────────────────────────────────────────────────────────── */
+switch {
+    background-color: shade(@theme_bg_color, 0.7);
+    border: 1px solid shade(@theme_bg_color, 0.5);
+    border-radius: 12px;
+    min-width: 40px;
+    min-height: 20px;
+}
+
+switch:checked {
+    background-color: @theme_selected_bg_color;
+}
+
+switch slider {
+    background-color: @theme_fg_color;
+    border-radius: 50%;
+    min-width: 18px;
+    min-height: 18px;
+}
+
+/* ── Scrollbars ──────────────────────────────────────────────────────────── */
+scrollbar {
+    background-color: shade(@theme_bg_color, 0.9);
+    border: none;
+}
+
+scrollbar slider {
+    background-color: shade(@theme_bg_color, 1.3);
+    border-radius: 4px;
+    min-width: 6px;
+    min-height: 6px;
+}
+
+scrollbar slider:hover {
+    background-color: @theme_selected_bg_color;
+}
+
+scrollbar slider:active {
+    background-color: shade(@theme_selected_bg_color, 1.2);
+}
+
+/* ── Notebook (tabs) ─────────────────────────────────────────────────────── */
+notebook {
+    background-color: @theme_bg_color;
+}
+
+notebook header {
+    background-color: shade(@theme_bg_color, 0.85);
+    border-bottom: 1px solid shade(@theme_bg_color, 0.6);
+}
+
+notebook tab {
+    background-color: shade(@theme_bg_color, 0.8);
+    border: 1px solid shade(@theme_bg_color, 0.6);
+    padding: 4px 12px;
+    color: shade(@theme_fg_color, 0.8);
+}
+
+notebook tab:checked {
+    background-color: @theme_bg_color;
+    border-bottom-color: @theme_bg_color;
+    color: @theme_fg_color;
+}
+
+notebook tab:hover {
+    background-color: shade(@theme_bg_color, 1.1);
+}
+
+/* ── Progress bars ───────────────────────────────────────────────────────── */
+progressbar trough {
+    background-color: @theme_base_color;
+    border: 1px solid shade(@theme_bg_color, 0.6);
+    border-radius: 3px;
+    min-height: 8px;
+}
+
+progressbar progress {
+    background: linear-gradient(to right, @theme_selected_bg_color, shade(@theme_selected_bg_color, 1.2));
+    border-radius: 3px;
+    min-height: 8px;
+}
+
+/* ── Spinners ────────────────────────────────────────────────────────────── */
+spinner {
+    color: @theme_selected_bg_color;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+.sidebar {
+    background-color: shade(@theme_bg_color, 0.85);
+    border-right: 1px solid shade(@theme_bg_color, 0.6);
+}
+
+.sidebar row:selected {
+    background-color: @theme_selected_bg_color;
+    color: @theme_selected_fg_color;
+}
+
+/* ── Treeview / Lists ────────────────────────────────────────────────────── */
+treeview {
+    background-color: @theme_base_color;
+    color: @theme_fg_color;
+}
+
+treeview:selected {
+    background-color: @theme_selected_bg_color;
+    color: @theme_selected_fg_color;
+}
+
+treeview header button {
+    background: linear-gradient(to bottom, shade(@theme_bg_color, 1.1), @theme_bg_color);
+    border: 1px solid shade(@theme_bg_color, 0.7);
+    color: @theme_fg_color;
+    font-weight: bold;
+}
+
+/* ── Dialogs ─────────────────────────────────────────────────────────────── */
+dialog {
+    background-color: @theme_bg_color;
+}
+
+messagedialog {
+    background-color: @theme_bg_color;
+}
+
+/* ── Selection ───────────────────────────────────────────────────────────── */
+selection {
+    background-color: @theme_selected_bg_color;
+    color: @theme_selected_fg_color;
+}
+
+/* ── Links ───────────────────────────────────────────────────────────────── */
+*:link {
+    color: shade(@theme_selected_bg_color, 1.3);
+}
+
+*:link:hover {
+    color: shade(@theme_selected_bg_color, 1.5);
+}
+
+/* ── Infobars ────────────────────────────────────────────────────────────── */
+infobar {
+    background-color: shade(@theme_selected_bg_color, 0.8);
+    color: @theme_selected_fg_color;
+}
+
+/* ── Statusbar ───────────────────────────────────────────────────────────── */
+statusbar {
+    background-color: shade(@theme_bg_color, 0.85);
+    color: shade(@theme_fg_color, 0.8);
+    padding: 2px 6px;
+}

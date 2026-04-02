@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint:
+    name: ShellCheck & Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Bash syntax check (bash -n)
+        run: |
+          failed=0
+          for f in install.sh lib/common.sh distros/*/install-*.sh \
+                   verify_scripts.sh verify_advanced.sh test_final.sh \
+                   assets/honey-badger-info assets/honey-badger-update assets/honey-badger-install; do
+            if bash -n "$f"; then
+              echo "✓ $f"
+            else
+              echo "✗ $f"
+              failed=1
+            fi
+          done
+          exit $failed
+
+      - name: ShellCheck
+        run: |
+          shellcheck -x -s bash \
+            -e SC2034 \
+            install.sh lib/common.sh \
+            distros/*/install-*.sh \
+            assets/honey-badger-info \
+            assets/honey-badger-update \
+            assets/honey-badger-install || true
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run verify_scripts.sh
+        run: bash verify_scripts.sh
+
+      - name: Run verify_advanced.sh
+        run: bash verify_advanced.sh
+
+      - name: Run test_final.sh
+        run: bash test_final.sh
+
+  distro-dry-run:
+    name: Dry-run (${{ matrix.distro }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: arch
+            image: archlinux:latest
+          - distro: debian
+            image: debian:bookworm
+          - distro: fedora
+            image: fedora:latest
+          - distro: void
+            image: ghcr.io/void-linux/void-glibc:latest
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bash (if needed)
+        run: |
+          command -v bash >/dev/null 2>&1 || {
+            if command -v pacman >/dev/null 2>&1; then pacman -Sy --noconfirm bash
+            elif command -v apt-get >/dev/null 2>&1; then apt-get update && apt-get install -y bash
+            elif command -v dnf >/dev/null 2>&1; then dnf install -y bash
+            elif command -v xbps-install >/dev/null 2>&1; then xbps-install -Sy bash
+            fi
+          }
+
+      - name: Syntax check distro script
+        run: bash -n distros/${{ matrix.distro }}/install-${{ matrix.distro }}.sh
+
+      - name: Dry-run install
+        run: |
+          export HONEY_BADGER_DRY_RUN=1
+          export HONEY_BADGER_NONINTERACTIVE=1
+          export HONEY_BADGER_INSTALL_TYPE=minimal
+          bash distros/${{ matrix.distro }}/install-${{ matrix.distro }}.sh || true

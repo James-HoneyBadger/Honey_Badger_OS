@@ -1,0 +1,39 @@
+#!/bin/bash
+# Honey Badger OS - System Information Display
+# This is a fallback version; the live version is generated at install time in ~/.local/bin/
+
+set -euo pipefail
+
+# Colors
+NC='\033[0m'; BOLD='\033[1m'; YELLOW='\033[0;33m'; CYAN='\033[0;36m'; GREEN='\033[0;32m'
+
+if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
+    echo -e "${YELLOW}${BOLD}🦡 Honey Badger OS - System Info${NC}"
+    echo ""
+    echo "Usage: honey-badger-info"
+    echo ""
+    echo "Displays system information including OS, kernel, memory, disk, and more."
+    echo "Runs neofetch if available."
+    exit 0
+fi
+
+echo -e "${YELLOW}${BOLD}"
+echo "  🦡 Honey Badger OS System Info 🦡"
+echo -e "${NC}"
+
+echo -e "${CYAN}OS:${NC}           $(cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d= -f2 | tr -d '"' || uname -s)"
+echo -e "${CYAN}Kernel:${NC}       $(uname -r)"
+echo -e "${CYAN}Architecture:${NC} $(uname -m)"
+echo -e "${CYAN}Hostname:${NC}     $(hostname)"
+echo -e "${CYAN}User:${NC}         $(whoami)"
+echo -e "${CYAN}Shell:${NC}        $SHELL"
+echo -e "${CYAN}Uptime:${NC}       $(uptime -p 2>/dev/null || uptime | awk '{print $3,$4}')"
+echo -e "${CYAN}Memory:${NC}       $(free -h 2>/dev/null | awk '/Mem:/{print $3 "/" $2}' || echo "N/A")"
+echo -e "${CYAN}Disk (/):${NC}     $(df -h / | awk 'NR==2{print $3 "/" $2 " (" $5 " used)"}')"
+
+if command -v neofetch >/dev/null 2>&1; then
+    echo ""
+    neofetch --off
+fi
+
+echo -e "\n${GREEN}Honey Badger don't care. Honey Badger is fearless! 🦡${NC}"

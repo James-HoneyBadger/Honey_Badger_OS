@@ -4,16 +4,88 @@
 
 set -euo pipefail
 
-# Color definitions for consistent output
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[0;33m'
-readonly BLUE='\033[0;34m'
-readonly MAGENTA='\033[0;35m'
-readonly CYAN='\033[0;36m'
-readonly WHITE='\033[0;37m'
-readonly BOLD='\033[1m'
-readonly NC='\033[0m' # No Color
+# ── Help text ────────────────────────────────────────────────────────────────
+show_help() {
+    cat << 'ENDHELP'
+Usage: install.sh [OPTIONS]
+
+Honey Badger OS - Universal Post-Install Framework
+
+Options:
+  --help              Show this help message and exit
+  --dry-run           Simulate installation without making changes
+  --non-interactive   Skip all prompts (requires HONEY_BADGER_INSTALL_TYPE)
+  --no-color          Disable colored output
+  --verbose           Show detailed debug output
+  --quiet             Suppress informational messages (errors still shown)
+  --skip-docker       Skip Docker installation and configuration
+  --skip-python       Skip Python development environment setup
+  --skip-node         Skip Node.js development environment setup
+  --skip-nano         Skip nano editor configuration
+
+Environment variables:
+  HONEY_BADGER_INSTALL_TYPE   Set install type: full, developer, desktop, minimal
+  HONEY_BADGER_DRY_RUN=1      Same as --dry-run
+  HONEY_BADGER_NONINTERACTIVE=1  Same as --non-interactive
+  HONEY_BADGER_GIT_USERNAME   Git username for non-interactive config
+  HONEY_BADGER_GIT_EMAIL      Git email for non-interactive config
+  NO_COLOR=1                  Disable colors (https://no-color.org)
+  HONEY_BADGER_SKIP_DOCKER=1  Same as --skip-docker
+  HONEY_BADGER_SKIP_PYTHON=1  Same as --skip-python
+  HONEY_BADGER_SKIP_NODE=1    Same as --skip-node
+  HONEY_BADGER_SKIP_NANO=1    Same as --skip-nano
+
+Supported distributions:
+  Arch Linux    (Arch, Manjaro, EndeavourOS, ArcoLinux, Artix)
+  Debian/Ubuntu (Debian, Ubuntu, Mint, Pop!_OS, Elementary, Zorin, Kali)
+  Red Hat       (Fedora, RHEL, CentOS, AlmaLinux, Rocky Linux)
+  Slackware     (Slackware, Salix)
+  Void Linux
+
+Examples:
+  ./install.sh                                  Interactive installation
+  ./install.sh --dry-run                        Preview what would happen
+  ./install.sh --non-interactive --skip-docker  Automated install, no Docker
+  HONEY_BADGER_INSTALL_TYPE=minimal ./install.sh --non-interactive
+
+Report bugs: https://github.com/James-HoneyBadger/Honey_Badger_OS/issues
+ENDHELP
+    exit 0
+}
+
+# Parse CLI flags before sourcing anything
+for arg in "$@"; do
+    case "$arg" in
+        --help|-h)           show_help ;;
+        --dry-run)           export HONEY_BADGER_DRY_RUN=1 ;;
+        --non-interactive)   export HONEY_BADGER_NONINTERACTIVE=1 ;;
+        --no-color)          export HONEY_BADGER_NO_COLOR=1 ;;
+        --verbose)           export HONEY_BADGER_VERBOSITY=2 ;;
+        --quiet)             export HONEY_BADGER_VERBOSITY=0 ;;
+        --skip-docker)       export HONEY_BADGER_SKIP_DOCKER=1 ;;
+        --skip-python)       export HONEY_BADGER_SKIP_PYTHON=1 ;;
+        --skip-node)         export HONEY_BADGER_SKIP_NODE=1 ;;
+        --skip-nano)         export HONEY_BADGER_SKIP_NANO=1 ;;
+        --*)                 echo "Unknown option: $arg (try --help)" >&2; exit 1 ;;
+    esac
+done
+
+# Source shared library (provides colors, logging, hb_sudo, etc.)
+HONEY_BADGER_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$HONEY_BADGER_ROOT/lib/common.sh" ]]; then
+    source "$HONEY_BADGER_ROOT/lib/common.sh"
+else
+    # Fallback: define colors and logging inline if lib not found
+    readonly RED='\033[0;31m'
+    readonly GREEN='\033[0;32m'
+    readonly YELLOW='\033[0;33m'
+    readonly BLUE='\033[0;34m'
+    readonly MAGENTA='\033[0;35m'
+    readonly CYAN='\033[0;36m'
+    readonly WHITE='\033[0;37m'
+    readonly BOLD='\033[1m'
+    readonly NC='\033[0m'
+fi
 
 # Banner and branding
 show_banner() {
@@ -25,26 +97,17 @@ show_banner() {
     echo -e "${NC}"
 }
 
-# Logging functions
-log_info() {
-    echo -e "${CYAN}[INFO]${NC} $1"
-}
-
-log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-log_step() {
-    echo -e "${BLUE}${BOLD}[STEP]${NC} $1"
-}
+# Logging functions (only define if not already provided by lib/common.sh)
+if ! declare -f log_info >/dev/null 2>&1; then
+    log_info()    { echo -e "${CYAN}[INFO]${NC} $1"; }
+    log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+    log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+    log_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
+    log_step()    { echo -e "${BLUE}${BOLD}[STEP]${NC} $1"; }
+    is_noninteractive() {
+        [[ "${HONEY_BADGER_NONINTERACTIVE:-0}" == "1" || "${CI:-}" == "true" ]]
+    }
+fi
 
 # Check if running as root
 check_root() {
@@ -247,6 +310,12 @@ get_installation_type() {
                 ;;
         esac
     fi
+
+    if is_noninteractive; then
+        log_error "Non-interactive mode requires HONEY_BADGER_INSTALL_TYPE to be set"
+        log_info "Set one of: full, developer, desktop, minimal"
+        exit 1
+    fi
     
     show_installation_types
     
@@ -282,10 +351,12 @@ get_installation_type() {
 run_preflight_checks() {
     log_step "Running pre-flight checks..."
     
-    # Check internet connectivity
+    # Check internet connectivity (use hardened check from shared lib if available)
     log_info "Checking internet connectivity..."
-    if ! ping -c 1 google.com >/dev/null 2>&1; then
-        if ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+    if declare -f hb_check_network >/dev/null 2>&1; then
+        hb_check_network
+    else
+        if ! ping -c 1 -W 3 8.8.8.8 >/dev/null 2>&1; then
             log_error "No internet connectivity detected"
             log_info "Please check your network connection and try again"
             exit 1
@@ -371,6 +442,11 @@ show_installation_summary() {
 
 # Confirm installation
 confirm_installation() {
+    if is_noninteractive; then
+        log_info "Non-interactive mode enabled; proceeding without confirmation prompt"
+        return 0
+    fi
+
     echo -e "${BOLD}${YELLOW}Proceed with installation? [y/N]: ${NC}"
     read -r response
     
@@ -405,11 +481,16 @@ run_installer() {
     
     log_step "Starting ${distro} installation (${install_type} type)..."
     
-    # Set environment variable for the installer script
+    # Pass environment to the installer script
     export HONEY_BADGER_INSTALL_TYPE="$install_type"
+    export HONEY_BADGER_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     
     # Run the installer
     if "$installer_script"; then
+        # Clear checkpoint on success
+        if declare -f hb_clear_checkpoint >/dev/null 2>&1; then
+            hb_clear_checkpoint
+        fi
         log_success "Installation completed successfully!"
         show_post_install_message "$install_type"
     else
@@ -466,6 +547,33 @@ setup_logging() {
 main() {
     # Setup logging
     setup_logging
+
+    # Acquire lock to prevent concurrent runs
+    if declare -f hb_acquire_lock >/dev/null 2>&1; then
+        hb_acquire_lock
+    fi
+
+    # Dry-run notice
+    if [[ "${HONEY_BADGER_DRY_RUN:-0}" == "1" ]]; then
+        echo -e "${YELLOW}${BOLD}*** DRY-RUN MODE: No system changes will be made ***${NC}"
+    fi
+
+    # Check for checkpoint from a previous interrupted run
+    local checkpoint_step=0
+    if declare -f hb_load_checkpoint >/dev/null 2>&1; then
+        checkpoint_step=$(hb_load_checkpoint)
+        if [[ $checkpoint_step -gt 0 ]]; then
+            log_warning "Previous installation was interrupted at step ${checkpoint_step}."
+            if ! is_noninteractive; then
+                echo -e "${BOLD}Resume from checkpoint? [Y/n]: ${NC}"
+                read -r resume_choice
+                if [[ "${resume_choice:-Y}" =~ ^[nN] ]]; then
+                    checkpoint_step=0
+                    hb_clear_checkpoint
+                fi
+            fi
+        fi
+    fi
     
     # Show banner
     show_banner
@@ -513,7 +621,7 @@ main() {
 }
 
 # Handle interruption gracefully
-trap 'echo -e "\n${RED}Installation interrupted by user${NC}"; exit 1' INT TERM
+trap 'echo -e "\n${RED:-}Installation interrupted by user${NC:-}"; exit 130' INT TERM
 
 # Run main function if script is executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
